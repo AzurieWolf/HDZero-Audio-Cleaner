@@ -499,6 +499,21 @@ ipcMain.on('request-editor-back', (event) => {
   editorView.webContents.send('editor-request-close');
 });
 
+ipcMain.on('request-settings', (event) => {
+  if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return;
+  const session = editorView && !editorView.webContents.isDestroyed()
+    ? editorSessions.get(editorView.webContents.id)
+    : null;
+  if (session && session.attached) editorView.webContents.send('open-settings');
+  else send('open-settings');
+});
+
+ipcMain.on('theme-changed', (_event, theme) => {
+  if (!['red', 'cyan'].includes(theme)) return;
+  send('theme-changed', theme);
+  if (editorView && !editorView.webContents.isDestroyed()) editorView.webContents.send('theme-changed', theme);
+});
+
 ipcMain.handle('generate-preview', async (event, request) => {
   const session = editorSessions.get(event.sender.id);
   if (!session) throw new Error('The editor session is no longer available.');

@@ -21,6 +21,8 @@ Use **Edit / preview** on any queued video to slide from the queue into the edit
 By default, each result is saved in a **Fixed Videos** folder beside its source. Disable **Place processed videos in a folder** to save directly beside the source, or use **Change** under Output location to choose another base folder.
 Enable **Open file location when complete** to open every distinct output folder once after a successful batch.
 
+Use the title-bar **Settings** button to switch between the default **Black & Red** theme and the original **Cyan** theme. The selection is remembered across restarts and applies to both the queue and editor.
+
 ## Requirements
 
 - Windows 10/11

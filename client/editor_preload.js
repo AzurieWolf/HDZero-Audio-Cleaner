@@ -4,6 +4,7 @@ const validActions = new Set(['minimize', 'maximize', 'close']);
 
 contextBridge.exposeInMainWorld('videoEditor', {
   goBack: () => ipcRenderer.invoke('close-editor'),
+  setTheme: (theme) => ipcRenderer.send('theme-changed', theme),
   generatePreview: (request) => ipcRenderer.invoke('generate-preview', request),
   saveCustomSettings: (settings) => ipcRenderer.invoke('save-custom-settings', settings),
   useAsGlobalSettings: (settings) => ipcRenderer.invoke('use-as-global-settings', settings),
@@ -17,6 +18,16 @@ contextBridge.exposeInMainWorld('videoEditor', {
     const listener = () => callback();
     ipcRenderer.on('editor-request-close', listener);
     return () => ipcRenderer.removeListener('editor-request-close', listener);
+  },
+  onOpenSettings: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('open-settings', listener);
+    return () => ipcRenderer.removeListener('open-settings', listener);
+  },
+  onThemeChanged: (callback) => {
+    const listener = (_event, theme) => callback(theme);
+    ipcRenderer.on('theme-changed', listener);
+    return () => ipcRenderer.removeListener('theme-changed', listener);
   },
   onInit: (callback) => {
     const listener = (_event, payload) => callback(payload);
