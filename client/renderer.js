@@ -24,6 +24,16 @@ function globalTreatmentSettings() {
   };
 }
 
+function applyGlobalTreatmentSettings(settings) {
+  const channel = ['left', 'right', 'both'].includes(settings.channel) ? settings.channel : 'right';
+  document.querySelector(`input[name="channel"][value="${channel}"]`).checked = true;
+  document.querySelectorAll('.choice').forEach((choice) => choice.classList.toggle('selected', choice.querySelector('input').checked));
+  elements.denoise.checked = Boolean(settings.denoise);
+  elements.attenuation.value = Number(settings.attenuation) || 30;
+  elements.attenuationValue.value = `${elements.attenuation.value} dB`;
+  elements.attenuationControls.classList.toggle('disabled', !elements.denoise.checked);
+}
+
 function addPaths(paths) {
   const known = new Set(state.items.map((item) => item.path.toLowerCase()));
   paths.filter((filePath) => acceptedExtensions.has(extension(filePath)) && !known.has(filePath.toLowerCase())).forEach((filePath) => {
@@ -141,6 +151,14 @@ window.hdzero.onCustomSettings(({ id, settings }) => {
   if (!item) return;
   item.customSettings = settings;
   item.detail = settings ? 'Custom audio settings' : 'Waiting · global settings';
+  render();
+});
+
+window.hdzero.onGlobalSettings((settings) => {
+  applyGlobalTreatmentSettings(settings);
+  state.items.forEach((item) => {
+    if (!item.customSettings && item.status === 'queued') item.detail = 'Waiting · global settings';
+  });
   render();
 });
 

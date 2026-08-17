@@ -24,6 +24,11 @@ contextBridge.exposeInMainWorld('hdzero', {
     const listener = (_event, update) => callback(update);
     ipcRenderer.on('custom-settings-updated', listener);
     return () => ipcRenderer.removeListener('custom-settings-updated', listener);
+  },
+  onGlobalSettings: (callback) => {
+    const listener = (_event, settings) => callback(settings);
+    ipcRenderer.on('global-settings-updated', listener);
+    return () => ipcRenderer.removeListener('global-settings-updated', listener);
   }
 });
 

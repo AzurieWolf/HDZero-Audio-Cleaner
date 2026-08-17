@@ -15,7 +15,7 @@ const elements = {
   viewerLabel: document.getElementById('viewer-label'), denoise: document.getElementById('editor-denoise'),
   attenuation: document.getElementById('editor-attenuation'), attenuationValue: document.getElementById('editor-attenuation-value'),
   attenuationControls: document.getElementById('editor-attenuation-controls'), generate: document.getElementById('generate-preview'),
-  apply: document.getElementById('apply-settings'), reset: document.getElementById('reset-settings'),
+  apply: document.getElementById('apply-settings'), applyGlobal: document.getElementById('apply-global-settings'), reset: document.getElementById('reset-settings'),
   message: document.getElementById('editor-message'), progress: document.getElementById('preview-progress'),
   progressFill: document.getElementById('preview-progress-fill'), progressStatus: document.getElementById('preview-status'),
   progressPercent: document.getElementById('preview-percent')
@@ -278,6 +278,15 @@ elements.apply.addEventListener('click', async () => {
   elements.message.textContent = 'Custom settings saved for this video.';
 });
 
+elements.applyGlobal.addEventListener('click', async () => {
+  const settings = currentSettings();
+  await window.videoEditor.useAsGlobalSettings(settings);
+  state.globalSettings = { ...settings };
+  state.hasCustomSettings = false;
+  updateCustomState();
+  elements.message.textContent = 'Global settings updated. Queued videos without custom overrides will use these settings.';
+});
+
 elements.reset.addEventListener('click', async () => {
   const globalSettings = await window.videoEditor.clearCustomSettings();
   state.globalSettings = { ...globalSettings };
@@ -292,6 +301,11 @@ window.videoEditor.onProgress(({ progress, detail }) => {
   elements.progressFill.style.width = `${progress}%`;
   elements.progressPercent.value = `${progress}%`;
   elements.progressStatus.textContent = detail;
+});
+
+window.videoEditor.onGlobalSettings((settings) => {
+  state.globalSettings = { ...settings };
+  if (!state.hasCustomSettings) applySettings(settings);
 });
 
 const controls = document.querySelector('.window-controls');

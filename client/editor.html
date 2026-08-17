@@ -67,7 +67,11 @@
         </div>
 
         <button id="generate-preview" class="primary generate" type="button" disabled><span>Generate denoised preview</span><small>Enable AI noise reduction to process A–B</small></button>
-        <div class="settings-actions"><button id="reset-settings" class="secondary" type="button">Use global settings</button><button id="apply-settings" class="primary" type="button">Apply to this video</button></div>
+        <div class="settings-actions">
+          <button id="reset-settings" class="secondary" type="button">Use global settings</button>
+          <button id="apply-settings" class="secondary" type="button">Apply to this video</button>
+          <button id="apply-global-settings" class="primary global-action" type="button"><span>Use as global settings</span><small>Apply to queued videos without custom overrides</small></button>
+        </div>
         <p id="editor-message" class="editor-message">Move the timeline to choose a preview range.</p>
       </aside>
     </section>

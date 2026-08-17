@@ -435,6 +435,21 @@ ipcMain.handle('save-custom-settings', (event, settings) => {
   return true;
 });
 
+ipcMain.handle('use-as-global-settings', (event, settings) => {
+  const sourceSession = editorSessions.get(event.sender.id);
+  if (!sourceSession) throw new Error('The editor session is no longer available.');
+  sourceSession.customSettings = null;
+  send('custom-settings-updated', { id: sourceSession.itemId, settings: null });
+  send('global-settings-updated', settings);
+  for (const session of editorSessions.values()) {
+    session.globalSettings = { ...settings };
+    if (!session.window.isDestroyed()) {
+      session.window.webContents.send('editor-global-settings-updated', settings);
+    }
+  }
+  return settings;
+});
+
 ipcMain.handle('clear-custom-settings', (event) => {
   const session = editorSessions.get(event.sender.id);
   if (!session) throw new Error('The editor session is no longer available.');
