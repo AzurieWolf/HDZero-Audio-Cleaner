@@ -10,6 +10,7 @@ const elements = {
   denoise: document.getElementById('denoise-toggle'), attenuation: document.getElementById('attenuation'),
   attenuationValue: document.getElementById('attenuation-value'), attenuationControls: document.getElementById('attenuation-controls'),
   output: document.getElementById('output-button'), outputLabel: document.getElementById('output-label'),
+  organizeOutputs: document.getElementById('organize-outputs'),
   openWhenComplete: document.getElementById('open-when-complete'), summary: document.getElementById('summary')
 };
 
@@ -34,6 +35,17 @@ function applyGlobalTreatmentSettings(settings) {
   elements.attenuationControls.classList.toggle('disabled', !elements.denoise.checked);
 }
 
+function updateOutputLabel() {
+  if (state.outputDirectory) {
+    const base = state.outputDirectory.replace(/[\\/]$/, '');
+    elements.outputLabel.textContent = elements.organizeOutputs.checked ? `${base}\\Fixed Videos` : base;
+    elements.outputLabel.title = elements.outputLabel.textContent;
+    return;
+  }
+  elements.outputLabel.textContent = elements.organizeOutputs.checked ? 'Each source / Fixed Videos' : 'Next to each source';
+  elements.outputLabel.title = elements.outputLabel.textContent;
+}
+
 function addPaths(paths) {
   const known = new Set(state.items.map((item) => item.path.toLowerCase()));
   paths.filter((filePath) => acceptedExtensions.has(extension(filePath)) && !known.has(filePath.toLowerCase())).forEach((filePath) => {
@@ -52,6 +64,7 @@ function render() {
   elements.clear.disabled = state.processing || state.items.length === 0;
   elements.add.disabled = state.processing;
   elements.output.disabled = state.processing;
+  elements.organizeOutputs.disabled = state.processing;
   elements.openWhenComplete.disabled = state.processing;
   elements.process.disabled = state.processing || state.items.length === 0;
   elements.cancel.hidden = !state.processing;
@@ -101,9 +114,10 @@ document.querySelectorAll('input[name="channel"]').forEach((input) => input.addE
 
 elements.denoise.addEventListener('change', () => elements.attenuationControls.classList.toggle('disabled', !elements.denoise.checked));
 elements.attenuation.addEventListener('input', () => { elements.attenuationValue.value = `${elements.attenuation.value} dB`; });
+elements.organizeOutputs.addEventListener('change', updateOutputLabel);
 elements.output.addEventListener('click', async () => {
   const selected = await window.hdzero.selectOutputDirectory();
-  if (selected) { state.outputDirectory = selected; elements.outputLabel.textContent = selected; elements.outputLabel.title = selected; }
+  if (selected) { state.outputDirectory = selected; updateOutputLabel(); }
 });
 
 elements.process.addEventListener('click', async () => {
@@ -119,6 +133,7 @@ elements.process.addEventListener('click', async () => {
       denoise: elements.denoise.checked,
       attenuation: elements.denoise.checked ? Number(elements.attenuation.value) : null,
       outputDirectory: state.outputDirectory,
+      organizeOutputs: elements.organizeOutputs.checked,
       openWhenComplete: elements.openWhenComplete.checked
     }
   };

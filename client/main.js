@@ -11,12 +11,33 @@ let editorViewReady = null;
 let editorOpening = false;
 let activeProcess = null;
 let cancelRequested = false;
+let lastVideoDirectory = null;
 const editorSessions = new Map();
 
 const VIDEO_FILTERS = [
   { name: 'Video files', extensions: ['mp4', 'mkv', 'mov', 'avi', 'webm', 'm4v'] },
   { name: 'All files', extensions: ['*'] }
 ];
+
+function preferencesPath() {
+  return path.join(app.getPath('userData'), 'preferences.json');
+}
+
+function loadPreferences() {
+  try {
+    const preferences = JSON.parse(fs.readFileSync(preferencesPath(), 'utf8'));
+    if (typeof preferences.lastVideoDirectory === 'string' && fs.existsSync(preferences.lastVideoDirectory)) {
+      lastVideoDirectory = preferences.lastVideoDirectory;
+    }
+  } catch {
+    lastVideoDirectory = null;
+  }
+}
+
+async function savePreferences() {
+  await fs.promises.mkdir(path.dirname(preferencesPath()), { recursive: true });
+  await fs.promises.writeFile(preferencesPath(), JSON.stringify({ lastVideoDirectory }, null, 2), 'utf8');
+}
 
 function findResource(candidates, label) {
   const found = candidates.find((candidate) => fs.existsSync(candidate));
@@ -253,7 +274,8 @@ function outputSuffix(settings) {
 
 function outputPathFor(input, outputDirectory, settings) {
   const parsed = path.parse(input);
-  const directory = outputDirectory || parsed.dir;
+  const baseDirectory = outputDirectory || parsed.dir;
+  const directory = settings.organizeOutputs ? path.join(baseDirectory, 'Fixed Videos') : baseDirectory;
   const suffix = outputSuffix(settings);
   let candidate = path.join(directory, `${parsed.name}_${suffix}${parsed.ext}`);
   let index = 2;
@@ -289,6 +311,7 @@ async function processOne(item, settings, index, total) {
   });
 
   try {
+    await fs.promises.mkdir(path.dirname(output), { recursive: true });
     if (settings.denoise) {
       update('processing', 0, 'Extracting audio · 0%');
       const extractionArgs = withFfmpegProgress([
@@ -436,8 +459,15 @@ async function generatePreview(session, request) {
 
 ipcMain.handle('select-videos', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Add videos to the queue', properties: ['openFile', 'multiSelections'], filters: VIDEO_FILTERS
+    title: 'Add videos to the queue',
+    properties: ['openFile', 'multiSelections'],
+    filters: VIDEO_FILTERS,
+    ...(lastVideoDirectory ? { defaultPath: lastVideoDirectory } : {})
   });
+  if (!result.canceled && result.filePaths.length) {
+    lastVideoDirectory = path.dirname(result.filePaths[0]);
+    await savePreferences().catch(() => {});
+  }
   return result.canceled ? [] : result.filePaths;
 });
 
@@ -546,6 +576,7 @@ ipcMain.on('window-control', (event, action) => {
 });
 
 app.whenReady().then(() => {
+  loadPreferences();
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });

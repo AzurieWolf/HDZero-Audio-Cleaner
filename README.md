@@ -18,7 +18,7 @@ The video stream is copied without re-encoding. Output filenames describe the se
 
 Use **Edit / preview** on any queued video to slide from the queue into the editor in the same window. Use **Back** in the upper-left corner to return to the preserved queue. Choose a timeline position and preview duration; the editor calculates the A–B range automatically. Enable **Live timeline sync** when you want that range to follow source playback; it is off by default, while manually moving either timeline thumb still updates the range. Channel choices are monitored live: selecting one channel mutes the other and sends the kept channel to both speakers. Preview generation is only used for DeepFilterNet noise reduction. Choose **Apply to this video** to override the global settings for only that queue item, **Use global settings** to remove the override, or **Use as global settings** to send the editor choices to the main window and all queued videos without custom overrides.
 
-By default, each result is saved beside its source. Use **Change** under Output location to send the whole batch to another folder.
+By default, each result is saved in a **Fixed Videos** folder beside its source. Disable **Place processed videos in a folder** to save directly beside the source, or use **Change** under Output location to choose another base folder.
 Enable **Open file location when complete** to open every distinct output folder once after a successful batch.
 
 ## Requirements
