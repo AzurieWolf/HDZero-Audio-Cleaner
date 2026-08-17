@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HDZero Audio Cleaner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="titlebar">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M4 12h3l2-6 4 12 2-6h5"/></svg>
+    </div>
+    <div class="title-copy"><strong>HDZero Audio Cleaner</strong><span id="app-version">v—</span></div>
+    <div class="window-controls">
+      <button id="minimize" type="button" aria-label="Minimize" title="Minimize"><svg viewBox="0 0 16 16"><path d="M3 8h10"/></svg></button>
+      <button id="maximize" type="button" aria-label="Maximize" title="Maximize">
+        <svg class="maximize-shape" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1"/></svg>
+        <svg class="restore-shape" viewBox="0 0 16 16"><rect x="5.5" y="3.5" width="7" height="7" rx="1"/><path d="M10.5 10.5v2h-7v-7h2"/></svg>
+      </button>
+      <button id="close" class="close" type="button" aria-label="Close" title="Close"><svg viewBox="0 0 16 16"><path d="m4 4 8 8m0-8-8 8"/></svg></button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div><span class="eyebrow">HDZERO TOOLKIT</span><h1>Clean the noise.<br><em>Keep the flight.</em></h1></div>
+      <p>Remove an unwanted stereo channel, suppress background noise, and process an entire recording session in one pass.</p>
+    </section>
+
+    <section class="workspace">
+      <div class="queue-panel panel">
+        <div class="panel-heading">
+          <div><span class="step">01</span><h2>Video queue</h2><span id="queue-count" class="count">0 files</span></div>
+          <div class="heading-actions"><button id="clear-button" class="text-button" type="button">Clear</button><button id="add-button" class="primary small" type="button">+ Add videos</button></div>
+        </div>
+
+        <div id="drop-zone" class="drop-zone">
+          <div class="drop-icon"><svg viewBox="0 0 24 24"><path d="M12 16V4m-4 4 4-4 4 4M5 14v5h14v-5"/></svg></div>
+          <strong id="drop-title">Drop video files here</strong>
+          <span id="drop-subtitle">or use Add videos to select multiple recordings</span>
+          <small>MP4 · MKV · MOV · AVI · WEBM · M4V</small>
+        </div>
+        <div id="queue-list" class="queue-list" aria-live="polite"></div>
+      </div>
+
+      <aside class="settings-panel panel">
+        <div class="panel-heading"><div><span class="step">02</span><h2>Audio treatment</h2></div></div>
+
+        <fieldset>
+          <legend>Channel handling</legend>
+          <label class="choice selected"><input type="radio" name="channel" value="right" checked><span class="radio-dot"></span><span><strong>Keep right channel</strong><small>Remove left VTX noise · HDZero default</small></span></label>
+          <label class="choice"><input type="radio" name="channel" value="left"><span class="radio-dot"></span><span><strong>Keep left channel</strong><small>Remove the right microphone channel</small></span></label>
+          <label class="choice"><input type="radio" name="channel" value="both"><span class="radio-dot"></span><span><strong>Keep both channels</strong><small>Only apply optional denoising</small></span></label>
+        </fieldset>
+
+        <div class="denoise-card">
+          <label class="toggle-row"><span><strong>AI noise reduction</strong><small>DeepFilterNet 3</small></span><span class="switch"><input id="denoise-toggle" type="checkbox"><span></span></span></label>
+          <div id="attenuation-controls" class="attenuation disabled">
+            <div><label for="attenuation">Maximum attenuation</label><output id="attenuation-value">30 dB</output></div>
+            <input id="attenuation" type="range" min="1" max="60" value="30">
+            <div class="range-labels"><span>Natural</span><span>Aggressive</span></div>
+          </div>
+        </div>
+
+        <div class="output-row"><div><strong>Output location</strong><span id="output-label">Next to each source</span></div><button id="output-button" class="icon-button" type="button" title="Choose output folder">Change</button></div>
+        <label class="completion-toggle"><span><strong>Open file location when complete</strong><small>Each output folder opens only once</small></span><span class="switch"><input id="open-when-complete" type="checkbox"><span></span></span></label>
+        <div class="action-row"><button id="cancel-button" class="cancel-button" type="button" hidden>Cancel</button><button id="process-button" class="primary process" type="button" disabled><span>Process queue</span><small id="process-caption">Add videos to begin</small></button></div>
+        <p id="summary" class="summary">Video streams are copied without re-encoding. Originals remain untouched.</p>
+      </aside>
+    </section>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

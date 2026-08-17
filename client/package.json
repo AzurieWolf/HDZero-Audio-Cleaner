@@ -1,0 +1,35 @@
+{
+  "name": "hdzero-audio-cleaner",
+  "productName": "HDZero Audio Cleaner",
+  "version": "0.5.0",
+  "description": "Batch channel removal and optional DeepFilterNet denoising for HDZero video recordings.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.js && node --check preload.js && node --check renderer.js",
+    "build": "electron-builder --win"
+  },
+  "license": "MIT",
+  "private": true,
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.hdzero.audiocleaner",
+    "productName": "HDZero Audio Cleaner",
+    "directories": {
+      "output": "dist"
+    },
+    "extraResources": [
+      { "from": "dependencies/ffmpeg.exe", "to": "bin/ffmpeg.exe" },
+      { "from": "dependencies/models/DeepFilterNet3", "to": "models/DeepFilterNet3" },
+      { "from": "denoise_worker.py", "to": "denoise/denoise_worker.py" }
+    ],
+    "win": {
+      "target": "dir",
+      "executableName": "HDZero Audio Cleaner"
+    }
+  }
+}
