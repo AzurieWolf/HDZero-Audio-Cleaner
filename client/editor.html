@@ -42,6 +42,7 @@
 
         <div class="timeline-card">
           <div class="timeline-heading"><div><strong>Preview range</strong><small>Choose the start point; the end point is calculated automatically.</small></div><label>Preview time<select id="preview-duration"><option value="5">5 seconds</option><option value="10" selected>10 seconds</option><option value="20">20 seconds</option><option value="30">30 seconds</option></select></label></div>
+          <label class="timeline-sync"><span><strong>Live timeline sync</strong><small>Follow playback automatically; manual seeking always updates</small></span><span class="switch"><input id="timeline-sync" type="checkbox"><span></span></span></label>
           <div class="timeline-wrap">
             <div class="timeline-track"><span id="range-highlight"></span><i id="playhead"></i></div>
             <input id="timeline" type="range" min="0" max="0" value="0" step="0.01" aria-label="Preview start time">

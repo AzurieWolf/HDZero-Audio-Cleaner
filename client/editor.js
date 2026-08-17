@@ -1,7 +1,7 @@
 const state = {
   id: null, sourceUrl: '', previewUrl: '', duration: 0, start: 0, end: 0,
   previewLength: 10, globalSettings: null, hasCustomSettings: false, generating: false,
-  audioGraph: null, playbackFrame: null
+  audioGraph: null, playbackFrame: null, timelineSync: false
 };
 
 const elements = {
@@ -11,6 +11,7 @@ const elements = {
   highlight: document.getElementById('range-highlight'), playhead: document.getElementById('playhead'),
   start: document.getElementById('range-start'), end: document.getElementById('range-end'),
   rangeDuration: document.getElementById('range-duration'), previewDuration: document.getElementById('preview-duration'),
+  timelineSync: document.getElementById('timeline-sync'),
   showSource: document.getElementById('show-source'), showPreview: document.getElementById('show-preview'),
   viewerLabel: document.getElementById('viewer-label'), denoise: document.getElementById('editor-denoise'),
   attenuation: document.getElementById('editor-attenuation'), attenuationValue: document.getElementById('editor-attenuation-value'),
@@ -120,8 +121,8 @@ function updateSelection(seekVideo = true) {
   if (seekVideo && elements.showSource.classList.contains('active')) elements.player.currentTime = state.start;
 }
 
-function syncSelectionToPlayback() {
-  if (!elements.showSource.classList.contains('active') || !state.duration) return;
+function syncSelectionToPlayback(force = false) {
+  if ((!state.timelineSync && !force) || !elements.showSource.classList.contains('active') || !state.duration) return;
   const currentTime = Number(elements.player.currentTime);
   if (!Number.isFinite(currentTime)) return;
   elements.timeline.value = String(currentTime);
@@ -143,7 +144,7 @@ function trackPlayback() {
 }
 
 function startPlaybackTracking() {
-  if (state.playbackFrame === null && elements.showSource.classList.contains('active')) {
+  if (state.timelineSync && state.playbackFrame === null && elements.showSource.classList.contains('active')) {
     state.playbackFrame = requestAnimationFrame(trackPlayback);
   }
 }
@@ -219,14 +220,29 @@ elements.player.addEventListener('ended', () => {
   stopPlaybackTracking();
 });
 
-elements.player.addEventListener('timeupdate', syncSelectionToPlayback);
+elements.player.addEventListener('timeupdate', () => syncSelectionToPlayback());
 
 elements.player.addEventListener('seeking', () => {
-  syncSelectionToPlayback();
+  syncSelectionToPlayback(true);
+});
+
+elements.player.addEventListener('seeked', () => {
+  syncSelectionToPlayback(true);
 });
 
 elements.timeline.addEventListener('input', () => updateSelection(true));
 elements.previewDuration.addEventListener('change', () => updateSelection(true));
+elements.timelineSync.addEventListener('change', () => {
+  state.timelineSync = elements.timelineSync.checked;
+  if (state.timelineSync) {
+    syncSelectionToPlayback();
+    startPlaybackTracking();
+    elements.message.textContent = 'Live timeline sync enabled. The preview range will follow source playback.';
+  } else {
+    stopPlaybackTracking();
+    elements.message.textContent = 'Live timeline sync disabled. The preview range will remain fixed.';
+  }
+});
 elements.showSource.addEventListener('click', showSource);
 elements.showPreview.addEventListener('click', showPreview);
 
