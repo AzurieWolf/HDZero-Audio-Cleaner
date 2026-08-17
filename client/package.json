@@ -1,7 +1,7 @@
 {
   "name": "hdzero-audio-cleaner",
   "productName": "HDZero Audio Cleaner",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Batch channel removal and optional DeepFilterNet denoising for HDZero video recordings.",
   "main": "main.js",
   "scripts": {
@@ -30,7 +30,8 @@
     ],
     "win": {
       "target": "dir",
-      "executableName": "HDZero Audio Cleaner"
+      "executableName": "HDZero Audio Cleaner",
+      "icon": "build/HDZero-Audio-Cleaner-Icon.ico"
     }
   }
 }

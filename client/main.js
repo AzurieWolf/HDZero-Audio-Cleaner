@@ -80,6 +80,7 @@ function createWindow() {
     minHeight: 610,
     frame: false,
     titleBarStyle: 'hidden',
+    icon: path.join(__dirname, 'favicon.ico'),
     backgroundColor: '#080a0e',
     autoHideMenuBar: true,
     show: false,
