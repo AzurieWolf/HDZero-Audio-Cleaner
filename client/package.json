@@ -1,12 +1,12 @@
 {
   "name": "hdzero-audio-cleaner",
   "productName": "HDZero Audio Cleaner",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Batch channel removal and optional DeepFilterNet denoising for HDZero video recordings.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.js && node --check preload.js && node --check renderer.js",
+    "check": "node --check main.js && node --check preload.js && node --check renderer.js && node --check editor_preload.js && node --check editor.js",
     "build": "electron-builder --win"
   },
   "license": "MIT",
@@ -19,6 +19,7 @@
   "build": {
     "appId": "com.hdzero.audiocleaner",
     "productName": "HDZero Audio Cleaner",
+    "electronDist": "node_modules/electron/dist",
     "directories": {
       "output": "dist"
     },

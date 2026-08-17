@@ -5,6 +5,8 @@ An Electron desktop application for repairing and cleaning audio in HDZero video
 - HDZero channel repair: keep the right goggle-microphone channel (or the left VTX channel) and convert it to mono.
 - Optional DeepFilterNet 3 denoising with adjustable maximum attenuation.
 - Batch processing: add or drag in multiple videos and process them sequentially.
+- Per-video editor with source playback, an automatic highlighted A–B range, and 5, 10, 20, or 30-second processed previews.
+- Per-video custom audio settings with a visible `CUSTOM` indicator in the main queue.
 
 The video stream is copied without re-encoding. Output filenames describe the selected work, such as `_fixed`, `_denoised-30db`, or `_fixed+denoised-30db`. The app chooses a numbered suffix rather than overwriting an existing output.
 
@@ -13,6 +15,8 @@ The video stream is copied without re-encoding. Output filenames describe the se
 1. Run `[Client_Install_Requirements].bat` once. It installs Node dependencies, verifies or downloads FFmpeg, and installs Python/DeepFilterNet for AI noise reduction.
 2. Run `[Client_Run].bat`.
 3. Add videos, choose channel handling, optionally enable AI noise reduction, and select **Process queue**.
+
+Use **Edit / preview** on any queued video to choose a timeline position and preview duration. The editor calculates the A–B range automatically. Channel choices are monitored live: selecting one channel mutes the other and sends the kept channel to both speakers. Preview generation is only used for DeepFilterNet noise reduction. Choose **Apply to this video** to override the global settings for only that queue item, or **Use global settings** to remove the override.
 
 By default, each result is saved beside its source. Use **Change** under Output location to send the whole batch to another folder.
 Enable **Open file location when complete** to open every distinct output folder once after a successful batch.

@@ -59,3 +59,4 @@ spec/fixtures/logo.png
 # Project specific ignores
 /client/dependencies/ffmpeg.exe
 /client/dist-client
+/client/dist

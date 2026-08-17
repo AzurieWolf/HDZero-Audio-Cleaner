@@ -2,11 +2,13 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
+const { pathToFileURL } = require('url');
 const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
 
 let mainWindow;
 let activeProcess = null;
 let cancelRequested = false;
+const editorSessions = new Map();
 
 const VIDEO_FILTERS = [
   { name: 'Video files', extensions: ['mp4', 'mkv', 'mov', 'avi', 'webm', 'm4v'] },
@@ -66,6 +68,66 @@ function createWindow() {
   mainWindow.on('maximize', () => sendWindowState(mainWindow));
   mainWindow.on('unmaximize', () => sendWindowState(mainWindow));
   mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+function createEditorWindow(payload) {
+  const existing = Array.from(editorSessions.values()).find((session) => session.itemId === payload.id);
+  if (existing && !existing.window.isDestroyed()) {
+    existing.window.focus();
+    return;
+  }
+
+  const editorWindow = new BrowserWindow({
+    width: 1180,
+    height: 820,
+    minWidth: 900,
+    minHeight: 680,
+    frame: false,
+    titleBarStyle: 'hidden',
+    backgroundColor: '#080a0e',
+    autoHideMenuBar: true,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'editor_preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true
+    }
+  });
+
+  const session = {
+    window: editorWindow,
+    itemId: payload.id,
+    input: payload.path,
+    globalSettings: payload.globalSettings,
+    customSettings: payload.customSettings || null,
+    tempDirectory: null
+  };
+  const editorWebContentsId = editorWindow.webContents.id;
+  editorSessions.set(editorWebContentsId, session);
+  editorWindow.loadFile(path.join(__dirname, 'editor.html'));
+  editorWindow.webContents.on('did-finish-load', async () => {
+    const duration = await probeDuration(getFfmpegPath(), session.input);
+    if (editorWindow.isDestroyed()) return;
+    editorWindow.webContents.send('editor-init', {
+      id: session.itemId,
+      name: path.basename(session.input),
+      path: session.input,
+      sourceUrl: pathToFileURL(session.input).href,
+      duration,
+      version: app.getVersion(),
+      settings: session.customSettings || session.globalSettings,
+      hasCustomSettings: Boolean(session.customSettings)
+    });
+    sendWindowState(editorWindow);
+  });
+  editorWindow.once('ready-to-show', () => editorWindow.show());
+  editorWindow.on('maximize', () => sendWindowState(editorWindow));
+  editorWindow.on('unmaximize', () => sendWindowState(editorWindow));
+  editorWindow.on('closed', () => {
+    editorSessions.delete(editorWebContentsId);
+    if (session.tempDirectory) fs.promises.rm(session.tempDirectory, { recursive: true, force: true }).catch(() => {});
+  });
 }
 
 function runProcess(command, args, { onStdout } = {}) {
@@ -260,6 +322,82 @@ async function processOne(item, settings, index, total) {
   }
 }
 
+function editorProgress(session, progress, detail) {
+  if (!session.window.isDestroyed()) session.window.webContents.send('preview-progress', { progress, detail });
+}
+
+async function generatePreview(session, request) {
+  if (activeProcess) throw new Error('Another video is currently processing. Please wait for it to finish.');
+  const ffmpeg = getFfmpegPath();
+  const start = Math.max(0, Number(request.start) || 0);
+  const duration = Math.max(0.1, Math.min(30, Number(request.duration) || 5));
+  const settings = request.settings;
+  if (!settings.denoise) throw new Error('Enable AI noise reduction to generate a denoised preview.');
+  const tempDirectory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'hdzero-preview-'));
+  const extracted = path.join(tempDirectory, 'source.wav');
+  const enhanced = path.join(tempDirectory, 'enhanced.wav');
+  const output = path.join(tempDirectory, 'preview.mp4');
+
+  try {
+    editorProgress(session, 0, 'Extracting preview audio');
+    const extractionArgs = withFfmpegProgress([
+      '-y', '-hide_banner', '-loglevel', 'error', '-ss', String(start), '-t', String(duration),
+      '-i', session.input, '-map', '0:a:0', '-ar', '48000', '-c:a', 'pcm_s16le', extracted
+    ]);
+    await runProcess(ffmpeg, extractionArgs, {
+      onStdout: createProgressReader(duration, 0, 25, (progress) => editorProgress(session, progress, `Extracting audio · ${progress}%`))
+    });
+
+    editorProgress(session, 25, 'Loading DeepFilterNet 3');
+    const python = getPythonCommand();
+    const worker = app.isPackaged
+      ? path.join(process.resourcesPath, 'denoise', 'denoise_worker.py')
+      : path.join(__dirname, 'denoise_worker.py');
+    const model = app.isPackaged
+      ? path.join(process.resourcesPath, 'models', 'DeepFilterNet3')
+      : path.join(__dirname, 'dependencies', 'models', 'DeepFilterNet3');
+    const args = python.standalone ? [] : [...python.prefix, worker];
+    args.push('--input', extracted, '--output', enhanced, '--model', model, '--attenuation', String(settings.attenuation));
+    let pythonBuffer = '';
+    await runProcess(python.command, args, {
+      onStdout: (chunk) => {
+        pythonBuffer += chunk;
+        const lines = pythonBuffer.split(/\r?\n/);
+        pythonBuffer = lines.pop();
+        for (const line of lines) {
+          const match = line.match(/^HDZERO_PROGRESS=(\d+):(.*)$/);
+          if (!match) continue;
+          const progress = Math.round(25 + ((Number(match[1]) / 100) * 45));
+          editorProgress(session, progress, `${match[2]} · ${progress}%`);
+        }
+      }
+    });
+
+    editorProgress(session, 70, 'Rendering denoised preview');
+    const renderArgs = withFfmpegProgress([
+      '-y', '-hide_banner', '-loglevel', 'error', '-ss', String(start), '-t', String(duration),
+      '-i', session.input, '-i', enhanced, '-map', '0:v:0', '-map', '1:a:0',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', output
+    ]);
+    await runProcess(ffmpeg, renderArgs, {
+      onStdout: createProgressReader(duration, 70, 100, (progress) => editorProgress(session, progress, `Rendering denoised preview · ${progress}%`))
+    });
+
+    if (session.window.isDestroyed()) {
+      await fs.promises.rm(tempDirectory, { recursive: true, force: true }).catch(() => {});
+      throw new Error('The editor window was closed.');
+    }
+    const previousDirectory = session.tempDirectory;
+    session.tempDirectory = tempDirectory;
+    if (previousDirectory) fs.promises.rm(previousDirectory, { recursive: true, force: true }).catch(() => {});
+    return { url: `${pathToFileURL(output).href}?generated=${Date.now()}`, start, duration };
+  } catch (error) {
+    await fs.promises.rm(tempDirectory, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
+}
+
 ipcMain.handle('select-videos', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Add videos to the queue', properties: ['openFile', 'multiSelections'], filters: VIDEO_FILTERS
@@ -276,13 +414,46 @@ ipcMain.handle('select-output-directory', async () => {
 
 ipcMain.handle('get-app-info', () => ({ version: app.getVersion() }));
 
+ipcMain.handle('open-editor', (_event, payload) => {
+  if (!payload || !Number.isFinite(Number(payload.id)) || !fs.existsSync(payload.path)) {
+    throw new Error('The selected video is no longer available.');
+  }
+  createEditorWindow(payload);
+});
+
+ipcMain.handle('generate-preview', async (event, request) => {
+  const session = editorSessions.get(event.sender.id);
+  if (!session) throw new Error('The editor session is no longer available.');
+  return generatePreview(session, request);
+});
+
+ipcMain.handle('save-custom-settings', (event, settings) => {
+  const session = editorSessions.get(event.sender.id);
+  if (!session) throw new Error('The editor session is no longer available.');
+  session.customSettings = settings;
+  send('custom-settings-updated', { id: session.itemId, settings });
+  return true;
+});
+
+ipcMain.handle('clear-custom-settings', (event) => {
+  const session = editorSessions.get(event.sender.id);
+  if (!session) throw new Error('The editor session is no longer available.');
+  session.customSettings = null;
+  send('custom-settings-updated', { id: session.itemId, settings: null });
+  return session.globalSettings;
+});
+
 ipcMain.handle('process-queue', async (_event, payload) => {
   if (activeProcess) throw new Error('A batch is already processing.');
   cancelRequested = false;
   const results = [];
   for (let index = 0; index < payload.items.length; index += 1) {
     if (cancelRequested) break;
-    results.push(await processOne(payload.items[index], payload.settings, index + 1, payload.items.length));
+    const item = payload.items[index];
+    const itemSettings = item.customSettings
+      ? { ...payload.settings, ...item.customSettings }
+      : payload.settings;
+    results.push(await processOne(item, itemSettings, index + 1, payload.items.length));
   }
   const wasCancelled = cancelRequested;
   if (!wasCancelled && payload.settings.openWhenComplete) {

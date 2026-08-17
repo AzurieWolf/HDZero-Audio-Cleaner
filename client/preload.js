@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('hdzero', {
   selectVideos: () => ipcRenderer.invoke('select-videos'),
   selectOutputDirectory: () => ipcRenderer.invoke('select-output-directory'),
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
+  openEditor: (payload) => ipcRenderer.invoke('open-editor', payload),
   processQueue: (payload) => ipcRenderer.invoke('process-queue', payload),
   cancel: () => ipcRenderer.send('cancel-processing'),
   pathFromFile: (file) => webUtils.getPathForFile(file),
@@ -18,6 +19,11 @@ contextBridge.exposeInMainWorld('hdzero', {
     const listener = (_event, result) => callback(result);
     ipcRenderer.on('processing-finished', listener);
     return () => ipcRenderer.removeListener('processing-finished', listener);
+  },
+  onCustomSettings: (callback) => {
+    const listener = (_event, update) => callback(update);
+    ipcRenderer.on('custom-settings-updated', listener);
+    return () => ipcRenderer.removeListener('custom-settings-updated', listener);
   }
 });
 

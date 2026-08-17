@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' file:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video Editor · HDZero Audio Cleaner</title>
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+  <header class="titlebar">
+    <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h3l2-6 4 12 2-6h5"/></svg></div>
+    <div class="title-copy"><strong>Video Editor</strong><span id="app-version">v—</span></div>
+    <div class="window-controls">
+      <button id="minimize" type="button" aria-label="Minimize"><svg viewBox="0 0 16 16"><path d="M3 8h10"/></svg></button>
+      <button id="maximize" type="button" aria-label="Maximize"><svg class="maximize-shape" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1"/></svg><svg class="restore-shape" viewBox="0 0 16 16"><rect x="5.5" y="3.5" width="7" height="7" rx="1"/><path d="M10.5 10.5v2h-7v-7h2"/></svg></button>
+      <button id="close" class="close" type="button" aria-label="Close"><svg viewBox="0 0 16 16"><path d="m4 4 8 8m0-8-8 8"/></svg></button>
+    </div>
+  </header>
+
+  <main>
+    <section class="editor-heading">
+      <div><span class="eyebrow">EDIT &amp; PREVIEW</span><h1 id="video-name">Loading video…</h1><p id="video-path"></p></div>
+      <span id="custom-state" class="custom-state">Using global settings</span>
+    </section>
+
+    <section class="editor-grid">
+      <div class="preview-panel panel">
+        <div class="viewer">
+          <video id="player" controls preload="metadata"></video>
+          <div id="viewer-empty" class="viewer-empty">Loading video preview…</div>
+        </div>
+
+        <div class="source-tabs">
+          <span class="view-switch-label">PLAYBACK VIEW</span>
+          <div class="view-switch" role="group" aria-label="Choose video version">
+            <button id="show-source" class="active" type="button" aria-pressed="true"><i aria-hidden="true"></i>View original</button>
+            <button id="show-preview" type="button" aria-pressed="false" disabled><i aria-hidden="true"></i>View generated preview</button>
+          </div>
+          <span id="viewer-label">Viewing source video</span>
+        </div>
+
+        <div class="timeline-card">
+          <div class="timeline-heading"><div><strong>Preview range</strong><small>Choose the start point; the end point is calculated automatically.</small></div><label>Preview time<select id="preview-duration"><option value="5">5 seconds</option><option value="10" selected>10 seconds</option><option value="20">20 seconds</option><option value="30">30 seconds</option></select></label></div>
+          <div class="timeline-wrap">
+            <div class="timeline-track"><span id="range-highlight"></span><i id="playhead"></i></div>
+            <input id="timeline" type="range" min="0" max="0" value="0" step="0.01" aria-label="Preview start time">
+          </div>
+          <div class="range-readout"><span><b>A</b><output id="range-start">00:00.000</output></span><span class="range-duration" id="range-duration">10 second selection</span><span><b>B</b><output id="range-end">00:10.000</output></span></div>
+        </div>
+
+        <div id="preview-progress" class="preview-progress" hidden><div><span id="preview-status">Preparing preview…</span><output id="preview-percent">0%</output></div><span><i id="preview-progress-fill"></i></span></div>
+      </div>
+
+      <aside class="settings-panel panel">
+        <div class="section-heading"><span>VIDEO AUDIO</span><h2>Audio treatment</h2><p>Monitor channels live, then preview optional noise reduction.</p></div>
+        <fieldset>
+          <legend>Live channel monitoring</legend>
+          <label class="choice selected"><input type="radio" name="editor-channel" value="right"><span class="radio-dot"></span><span><strong>Mute left channel</strong><small>Hear the right channel through both speakers</small></span><b class="live-badge">LIVE</b></label>
+          <label class="choice"><input type="radio" name="editor-channel" value="left"><span class="radio-dot"></span><span><strong>Mute right channel</strong><small>Hear the left channel through both speakers</small></span><b class="live-badge">LIVE</b></label>
+          <label class="choice"><input type="radio" name="editor-channel" value="both"><span class="radio-dot"></span><span><strong>Keep both channels</strong><small>Listen to the original stereo track</small></span><b class="live-badge">LIVE</b></label>
+        </fieldset>
+
+        <div class="denoise-card">
+          <label class="toggle-row"><span><strong>AI noise reduction</strong><small>DeepFilterNet 3</small></span><span class="switch"><input id="editor-denoise" type="checkbox"><span></span></span></label>
+          <div id="editor-attenuation-controls" class="attenuation disabled"><div><label for="editor-attenuation">Maximum attenuation</label><output id="editor-attenuation-value">30 dB</output></div><input id="editor-attenuation" type="range" min="1" max="60" value="30"><div class="range-labels"><span>Natural</span><span>Aggressive</span></div></div>
+        </div>
+
+        <button id="generate-preview" class="primary generate" type="button" disabled><span>Generate denoised preview</span><small>Enable AI noise reduction to process A–B</small></button>
+        <div class="settings-actions"><button id="reset-settings" class="secondary" type="button">Use global settings</button><button id="apply-settings" class="primary" type="button">Apply to this video</button></div>
+        <p id="editor-message" class="editor-message">Move the timeline to choose a preview range.</p>
+      </aside>
+    </section>
+  </main>
+  <script src="editor.js"></script>
+</body>
+</html>
