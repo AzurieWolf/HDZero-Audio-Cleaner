@@ -7,6 +7,7 @@ button { cursor:pointer; }
 button:disabled { cursor:not-allowed; opacity:.45; }
 svg { fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 .titlebar { position:fixed; z-index:20; inset:0 0 auto; display:flex; align-items:center; height:48px; border-bottom:1px solid #20252d; background:rgba(8,10,14,.94); user-select:none; -webkit-app-region:drag; }
+.editor-back-slot { flex:0 0 0; height:100%; overflow:hidden; opacity:0; pointer-events:none; transition:flex-basis .28s cubic-bezier(.2,.8,.2,1),opacity .16s ease; -webkit-app-region:no-drag; }.editor-active .editor-back-slot { flex-basis:82px; opacity:1; pointer-events:auto; }.editor-back-slot button { display:flex; align-items:center; justify-content:center; gap:7px; width:82px; height:100%; padding:0; border:0; border-right:1px solid #28635f; color:var(--cyan-bright); background:#102321; font-size:10px; font-weight:750; cursor:pointer; -webkit-app-region:no-drag; }.editor-back-slot button:hover,.editor-back-slot button:focus-visible { color:#fff; background:#17403c; outline:none; }.editor-back-slot button:active { background:#0b1918; }.editor-back-slot svg { width:15px; }
 .brand-mark { display:grid; place-items:center; width:31px; height:31px; margin-left:14px; border:1px solid rgba(34,211,197,.34); border-radius:8px; color:var(--cyan-bright); background:#0a2423; }
 .brand-mark svg { width:19px; }
 .title-copy { display:flex; align-items:baseline; gap:10px; margin-left:10px; font-size:13px; }

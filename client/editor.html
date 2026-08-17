@@ -8,16 +8,7 @@
   <link rel="stylesheet" href="editor.css">
 </head>
 <body>
-  <header class="titlebar">
-    <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h3l2-6 4 12 2-6h5"/></svg></div>
-    <div class="title-copy"><strong>Video Editor</strong><span id="app-version">v—</span></div>
-    <div class="window-controls">
-      <button id="minimize" type="button" aria-label="Minimize"><svg viewBox="0 0 16 16"><path d="M3 8h10"/></svg></button>
-      <button id="maximize" type="button" aria-label="Maximize"><svg class="maximize-shape" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1"/></svg><svg class="restore-shape" viewBox="0 0 16 16"><rect x="5.5" y="3.5" width="7" height="7" rx="1"/><path d="M10.5 10.5v2h-7v-7h2"/></svg></button>
-      <button id="close" class="close" type="button" aria-label="Close"><svg viewBox="0 0 16 16"><path d="m4 4 8 8m0-8-8 8"/></svg></button>
-    </div>
-  </header>
-
+  <div id="editor-surface" class="editor-surface">
   <main>
     <section class="editor-heading">
       <div><span class="eyebrow">EDIT &amp; PREVIEW</span><h1 id="video-name">Loading video…</h1><p id="video-path"></p></div>
@@ -28,6 +19,7 @@
       <div class="preview-panel panel">
         <div class="viewer">
           <video id="player" controls preload="metadata"></video>
+          <div id="video-loading" class="video-loading"><i aria-hidden="true"></i><strong>Loading video</strong><small>Preparing playback...</small></div>
           <div id="viewer-empty" class="viewer-empty">Loading video preview…</div>
         </div>
 
@@ -77,6 +69,7 @@
       </aside>
     </section>
   </main>
+  </div>
   <script src="editor.js"></script>
 </body>
 </html>

@@ -4,8 +4,12 @@ const state = {
   audioGraph: null, playbackFrame: null, timelineSync: false
 };
 
+window.videoEditor.onTransitionStart(() => {
+  requestAnimationFrame(() => document.body.classList.add('editor-enter'));
+});
+
 const elements = {
-  player: document.getElementById('player'), empty: document.getElementById('viewer-empty'),
+  player: document.getElementById('player'), empty: document.getElementById('viewer-empty'), loading: document.getElementById('video-loading'),
   name: document.getElementById('video-name'), path: document.getElementById('video-path'),
   custom: document.getElementById('custom-state'), timeline: document.getElementById('timeline'),
   highlight: document.getElementById('range-highlight'), playhead: document.getElementById('playhead'),
@@ -21,6 +25,15 @@ const elements = {
   progressFill: document.getElementById('preview-progress-fill'), progressStatus: document.getElementById('preview-status'),
   progressPercent: document.getElementById('preview-percent')
 };
+
+function showVideoLoading(message = 'Preparing playback...') {
+  elements.loading.querySelector('small').textContent = message;
+  elements.loading.hidden = false;
+}
+
+function hideVideoLoading() {
+  elements.loading.hidden = true;
+}
 
 function formatTime(seconds) {
   const safe = Math.max(0, Number(seconds) || 0);
@@ -150,6 +163,7 @@ function startPlaybackTracking() {
 }
 
 function showSource() {
+  showVideoLoading('Loading original video...');
   elements.player.src = state.sourceUrl;
   elements.player.load();
   elements.player.currentTime = state.start;
@@ -163,6 +177,7 @@ function showSource() {
 function showPreview() {
   if (!state.previewUrl) return;
   stopPlaybackTracking();
+  showVideoLoading('Loading generated preview...');
   elements.player.src = state.previewUrl;
   elements.player.load();
   elements.showPreview.classList.add('active');
@@ -181,9 +196,9 @@ window.videoEditor.onInit((payload) => {
   state.hasCustomSettings = payload.hasCustomSettings;
   elements.name.textContent = payload.name;
   elements.path.textContent = payload.path;
-  document.getElementById('app-version').textContent = `v${payload.version}`;
   applySettings(payload.settings);
   updateCustomState();
+  showVideoLoading('Loading original video...');
   elements.player.src = state.sourceUrl;
   elements.player.load();
   elements.timeline.max = String(state.duration);
@@ -201,9 +216,15 @@ elements.player.addEventListener('loadedmetadata', () => {
 });
 
 elements.player.addEventListener('error', () => {
+  hideVideoLoading();
   elements.empty.hidden = false;
   elements.empty.textContent = 'This format cannot be played directly. Generated previews will use MP4.';
 });
+
+elements.player.addEventListener('loadstart', () => showVideoLoading('Preparing playback...'));
+elements.player.addEventListener('waiting', () => showVideoLoading('Buffering video...'));
+elements.player.addEventListener('canplay', hideVideoLoading);
+elements.player.addEventListener('playing', hideVideoLoading);
 
 elements.player.addEventListener('play', () => {
   ensureAudioGraph();
@@ -324,12 +345,20 @@ window.videoEditor.onGlobalSettings((settings) => {
   if (!state.hasCustomSettings) applySettings(settings);
 });
 
-const controls = document.querySelector('.window-controls');
-const maximizeButton = document.getElementById('maximize');
-document.getElementById('minimize').addEventListener('click', () => window.windowControls.perform('minimize'));
-maximizeButton.addEventListener('click', () => window.windowControls.perform('maximize'));
-document.getElementById('close').addEventListener('click', () => window.windowControls.perform('close'));
-window.windowControls.onStateChange(({ maximized }) => {
-  controls.classList.toggle('is-maximized', maximized);
-  maximizeButton.setAttribute('aria-label', maximized ? 'Restore' : 'Maximize');
-});
+const navigateBack = () => {
+  if (document.body.classList.contains('editor-exit')) return;
+  document.body.classList.add('editor-exit');
+  let completed = false;
+  const handleAnimationEnd = (event) => {
+    if (event.animationName === 'editorSwipeOut') finish();
+  };
+  const finish = () => {
+    if (completed) return;
+    completed = true;
+    document.body.removeEventListener('animationend', handleAnimationEnd);
+    window.videoEditor.goBack();
+  };
+  document.body.addEventListener('animationend', handleAnimationEnd);
+  setTimeout(finish, 400);
+};
+window.videoEditor.onCloseRequested(navigateBack);

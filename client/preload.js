@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('hdzero', {
   selectOutputDirectory: () => ipcRenderer.invoke('select-output-directory'),
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
   openEditor: (payload) => ipcRenderer.invoke('open-editor', payload),
+  requestEditorBack: () => ipcRenderer.send('request-editor-back'),
   processQueue: (payload) => ipcRenderer.invoke('process-queue', payload),
   cancel: () => ipcRenderer.send('cancel-processing'),
   pathFromFile: (file) => webUtils.getPathForFile(file),
@@ -29,6 +30,11 @@ contextBridge.exposeInMainWorld('hdzero', {
     const listener = (_event, settings) => callback(settings);
     ipcRenderer.on('global-settings-updated', listener);
     return () => ipcRenderer.removeListener('global-settings-updated', listener);
+  },
+  onEditorVisibility: (callback) => {
+    const listener = (_event, visible) => callback(visible);
+    ipcRenderer.on('editor-visibility-changed', listener);
+    return () => ipcRenderer.removeListener('editor-visibility-changed', listener);
   }
 });
 

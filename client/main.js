@@ -3,9 +3,12 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
-const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell } = require('electron');
 
 let mainWindow;
+let editorView = null;
+let editorViewReady = null;
+let editorOpening = false;
 let activeProcess = null;
 let cancelRequested = false;
 const editorSessions = new Map();
@@ -41,7 +44,11 @@ function send(channel, payload) {
 
 function sendWindowState(window) {
   if (!window || window.isDestroyed()) return;
-  window.webContents.send('window-state-changed', { maximized: window.isMaximized() });
+  const payload = { maximized: window.isMaximized() };
+  window.webContents.send('window-state-changed', payload);
+  if (editorView && !editorView.webContents.isDestroyed()) {
+    editorView.webContents.send('window-state-changed', payload);
+  }
 }
 
 function createWindow() {
@@ -64,29 +71,41 @@ function createWindow() {
   });
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.webContents.on('did-finish-load', () => sendWindowState(mainWindow));
+  mainWindow.webContents.on('did-finish-load', () => {
+    sendWindowState(mainWindow);
+    prepareEditorView();
+  });
   mainWindow.on('maximize', () => sendWindowState(mainWindow));
   mainWindow.on('unmaximize', () => sendWindowState(mainWindow));
+  mainWindow.on('resize', () => {
+    if (!editorView || editorView.webContents.isDestroyed()) return;
+    const [width, height] = mainWindow.getContentSize();
+    editorView.setBounds({ x: 0, y: 48, width, height: Math.max(0, height - 48) });
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-function createEditorWindow(payload) {
-  const existing = Array.from(editorSessions.values()).find((session) => session.itemId === payload.id);
-  if (existing && !existing.window.isDestroyed()) {
-    existing.window.focus();
-    return;
+function closeEditorView() {
+  if (!editorView || !mainWindow || mainWindow.isDestroyed()) return;
+  const view = editorView;
+  const session = editorSessions.get(view.webContents.id);
+  editorSessions.delete(view.webContents.id);
+  if (session && session.tempDirectory) fs.promises.rm(session.tempDirectory, { recursive: true, force: true }).catch(() => {});
+  send('editor-visibility-changed', false);
+  if (session && session.attached) mainWindow.contentView.removeChildView(view);
+  if (!view.webContents.isDestroyed()) view.webContents.close();
+  if (editorView === view) {
+    editorView = null;
+    editorViewReady = null;
   }
+  mainWindow.webContents.focus();
+  prepareEditorView();
+}
 
-  const editorWindow = new BrowserWindow({
-    width: 1180,
-    height: 820,
-    minWidth: 900,
-    minHeight: 680,
-    frame: false,
-    titleBarStyle: 'hidden',
-    backgroundColor: '#080a0e',
-    autoHideMenuBar: true,
-    show: false,
+function prepareEditorView() {
+  if (!mainWindow || mainWindow.isDestroyed()) return null;
+  if (editorView && !editorView.webContents.isDestroyed()) return editorViewReady;
+  editorView = new WebContentsView({
     webPreferences: {
       preload: path.join(__dirname, 'editor_preload.js'),
       nodeIntegration: false,
@@ -94,22 +113,43 @@ function createEditorWindow(payload) {
       sandbox: true
     }
   });
+  editorView.setBackgroundColor('#00000000');
+  editorViewReady = editorView.webContents.loadFile(path.join(__dirname, 'editor.html'));
+  return editorViewReady;
+}
 
-  const session = {
-    window: editorWindow,
-    itemId: payload.id,
-    input: payload.path,
-    globalSettings: payload.globalSettings,
-    customSettings: payload.customSettings || null,
-    tempDirectory: null
-  };
-  const editorWebContentsId = editorWindow.webContents.id;
-  editorSessions.set(editorWebContentsId, session);
-  editorWindow.loadFile(path.join(__dirname, 'editor.html'));
-  editorWindow.webContents.on('did-finish-load', async () => {
+async function createEditorView(payload) {
+  if (editorSessions.size || editorOpening) return;
+  editorOpening = true;
+  try {
+    await prepareEditorView();
+    if (!mainWindow || mainWindow.isDestroyed() || !editorView || editorView.webContents.isDestroyed()) {
+      editorOpening = false;
+      return;
+    }
+
+    const session = {
+      webContents: editorView.webContents,
+      itemId: payload.id,
+      input: payload.path,
+      globalSettings: payload.globalSettings,
+      customSettings: payload.customSettings || null,
+      tempDirectory: null,
+      attached: false
+    };
+    const editorWebContentsId = editorView.webContents.id;
+    editorSessions.set(editorWebContentsId, session);
+    const [width, height] = mainWindow.getContentSize();
+    editorView.setBounds({ x: 0, y: 48, width, height: Math.max(0, height - 48) });
+    mainWindow.contentView.addChildView(editorView);
+    session.attached = true;
+    send('editor-visibility-changed', true);
+    session.webContents.focus();
+    session.webContents.send('editor-start-transition');
+    editorOpening = false;
     const duration = await probeDuration(getFfmpegPath(), session.input);
-    if (editorWindow.isDestroyed()) return;
-    editorWindow.webContents.send('editor-init', {
+    if (session.webContents.isDestroyed()) return;
+    session.webContents.send('editor-init', {
       id: session.itemId,
       name: path.basename(session.input),
       path: session.input,
@@ -119,15 +159,11 @@ function createEditorWindow(payload) {
       settings: session.customSettings || session.globalSettings,
       hasCustomSettings: Boolean(session.customSettings)
     });
-    sendWindowState(editorWindow);
-  });
-  editorWindow.once('ready-to-show', () => editorWindow.show());
-  editorWindow.on('maximize', () => sendWindowState(editorWindow));
-  editorWindow.on('unmaximize', () => sendWindowState(editorWindow));
-  editorWindow.on('closed', () => {
-    editorSessions.delete(editorWebContentsId);
-    if (session.tempDirectory) fs.promises.rm(session.tempDirectory, { recursive: true, force: true }).catch(() => {});
-  });
+    sendWindowState(mainWindow);
+  } catch (error) {
+    editorOpening = false;
+    throw error;
+  }
 }
 
 function runProcess(command, args, { onStdout } = {}) {
@@ -323,7 +359,7 @@ async function processOne(item, settings, index, total) {
 }
 
 function editorProgress(session, progress, detail) {
-  if (!session.window.isDestroyed()) session.window.webContents.send('preview-progress', { progress, detail });
+  if (!session.webContents.isDestroyed()) session.webContents.send('preview-progress', { progress, detail });
 }
 
 async function generatePreview(session, request) {
@@ -384,7 +420,7 @@ async function generatePreview(session, request) {
       onStdout: createProgressReader(duration, 70, 100, (progress) => editorProgress(session, progress, `Rendering denoised preview · ${progress}%`))
     });
 
-    if (session.window.isDestroyed()) {
+    if (session.webContents.isDestroyed()) {
       await fs.promises.rm(tempDirectory, { recursive: true, force: true }).catch(() => {});
       throw new Error('The editor window was closed.');
     }
@@ -418,7 +454,18 @@ ipcMain.handle('open-editor', (_event, payload) => {
   if (!payload || !Number.isFinite(Number(payload.id)) || !fs.existsSync(payload.path)) {
     throw new Error('The selected video is no longer available.');
   }
-  createEditorWindow(payload);
+  return createEditorView(payload);
+});
+
+ipcMain.handle('close-editor', (event) => {
+  if (!editorSessions.has(event.sender.id)) return false;
+  closeEditorView();
+  return true;
+});
+
+ipcMain.on('request-editor-back', (event) => {
+  if (!mainWindow || event.sender.id !== mainWindow.webContents.id || !editorView || editorView.webContents.isDestroyed()) return;
+  editorView.webContents.send('editor-request-close');
 });
 
 ipcMain.handle('generate-preview', async (event, request) => {
@@ -443,8 +490,8 @@ ipcMain.handle('use-as-global-settings', (event, settings) => {
   send('global-settings-updated', settings);
   for (const session of editorSessions.values()) {
     session.globalSettings = { ...settings };
-    if (!session.window.isDestroyed()) {
-      session.window.webContents.send('editor-global-settings-updated', settings);
+    if (!session.webContents.isDestroyed()) {
+      session.webContents.send('editor-global-settings-updated', settings);
     }
   }
   return settings;
@@ -491,7 +538,7 @@ ipcMain.on('cancel-processing', () => {
 });
 
 ipcMain.on('window-control', (event, action) => {
-  const window = BrowserWindow.fromWebContents(event.sender);
+  const window = BrowserWindow.fromWebContents(event.sender) || mainWindow;
   if (!window) return;
   if (action === 'minimize') window.minimize();
   if (action === 'maximize') window.isMaximized() ? window.unmaximize() : window.maximize();

@@ -162,6 +162,14 @@ window.hdzero.onGlobalSettings((settings) => {
   render();
 });
 
+window.hdzero.onEditorVisibility((visible) => {
+  document.body.classList.toggle('editor-active', visible);
+});
+
+document.getElementById('editor-back-button').addEventListener('click', () => {
+  if (document.body.classList.contains('editor-active')) window.hdzero.requestEditorBack();
+});
+
 const controls = document.querySelector('.window-controls');
 const maximizeButton = document.getElementById('maximize');
 document.getElementById('minimize').addEventListener('click', () => window.windowControls.perform('minimize'));
