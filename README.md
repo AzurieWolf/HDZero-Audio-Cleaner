@@ -47,7 +47,7 @@ MP4, MKV, MOV, AVI, WEBM, and M4V.
 
 ## Appearance
 
-Use the title-bar **Settings** button to switch between:
+Use the title-bar **Settings** button to customize the application. The **Theme** tab includes:
 
 - **Black & Red** — a dark interface with red accents.
 - **Cyan** — a dark interface with cyan accents.
@@ -55,7 +55,7 @@ Use the title-bar **Settings** button to switch between:
 - **Violet** — a dark interface with purple accents.
 - **Amber** — a dark interface with warm gold accents.
 
-The selected theme is remembered across restarts and is applied to both the queue and editor.
+The **Interface** tab includes a font-size slider that proportionally enlarges the program's existing text styles. Theme and font-size selections are remembered across restarts and applied to both the queue and editor.
 
 ## Install and run
 
