@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('hdzero', {
   requestEditorBack: () => ipcRenderer.send('request-editor-back'),
   requestSettings: () => ipcRenderer.send('request-settings'),
   setTheme: (theme) => ipcRenderer.send('theme-changed', theme),
+  setFontScale: (value) => ipcRenderer.send('font-scale-changed', value),
   processQueue: (payload) => ipcRenderer.invoke('process-queue', payload),
   cancel: () => ipcRenderer.send('cancel-processing'),
   pathFromFile: (file) => webUtils.getPathForFile(file),
@@ -47,6 +48,11 @@ contextBridge.exposeInMainWorld('hdzero', {
     const listener = (_event, theme) => callback(theme);
     ipcRenderer.on('theme-changed', listener);
     return () => ipcRenderer.removeListener('theme-changed', listener);
+  },
+  onFontScaleChanged: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on('font-scale-changed', listener);
+    return () => ipcRenderer.removeListener('font-scale-changed', listener);
   }
 });
 

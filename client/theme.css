@@ -1,4 +1,5 @@
 :root {
+  --font-scale:1;
   --cyan:#ef233c;
   --cyan-bright:#ff5368;
   --theme-rgb:239,35,60;
@@ -76,15 +77,22 @@
 
 .settings-modal { position:fixed; z-index:100; inset:0; display:grid; place-items:center; padding:24px; background:rgba(0,0,0,.72); backdrop-filter:blur(7px); -webkit-app-region:no-drag; }
 .settings-modal[hidden] { display:none; }
-.settings-dialog { width:min(560px,100%); overflow:hidden; border:1px solid #343b45; border-radius:14px; background:linear-gradient(145deg,#15191f,#090b0e); box-shadow:0 28px 90px rgba(0,0,0,.62); animation:settingsIn .18s ease-out; }
+.settings-dialog { width:min(560px,100%); max-height:calc(100vh - 48px); overflow:hidden; border:1px solid #343b45; border-radius:14px; background:linear-gradient(145deg,#15191f,#090b0e); box-shadow:0 28px 90px rgba(0,0,0,.62); animation:settingsIn .18s ease-out; }
 .settings-dialog-header { display:flex; align-items:center; justify-content:space-between; padding:16px 17px; border-bottom:1px solid #252b33; }
-.settings-dialog-header span { color:var(--cyan); font-size:8px; font-weight:800; letter-spacing:.15em; }
-.settings-dialog-header h2 { margin:4px 0 0; font-size:18px; }
+.settings-dialog-header span { color:var(--cyan); font-size:calc(8px * var(--font-scale)); font-weight:800; letter-spacing:.15em; }
+.settings-dialog-header h2 { margin:4px 0 0; font-size:calc(18px * var(--font-scale)); }
 .settings-close { display:grid; place-items:center; width:31px; height:31px; padding:0; border:1px solid #343b45; border-radius:7px; color:#8e98a3; background:#1a2028; }
 .settings-close:hover { color:#fff; background:#252d37; }
 .settings-close svg { width:14px; }
-.settings-dialog-body { padding:17px; }
-.settings-dialog-body>p { margin:0 0 12px; color:#77818c; font-size:10px; }
+.settings-tabs { display:flex; gap:4px; padding:10px 17px 0; border-bottom:1px solid #252b33; }
+.settings-tabs button { position:relative; padding:9px 13px 11px; border:0; color:#77818c; background:transparent; font-size:calc(10px * var(--font-scale)); font-weight:700; cursor:pointer; }
+.settings-tabs button:hover { color:#c6ced6; }
+.settings-tabs button.active { color:var(--cyan-bright); }
+.settings-tabs button.active:after { content:""; position:absolute; right:8px; bottom:-1px; left:8px; height:2px; border-radius:2px 2px 0 0; background:var(--cyan); }
+.settings-tabs button:focus-visible { outline:2px solid var(--cyan); outline-offset:-3px; border-radius:6px; }
+.settings-dialog-body { max-height:calc(100vh - 155px); overflow-y:auto; padding:17px; }
+.settings-tab-panel>p { margin:0 0 12px; color:#77818c; font-size:calc(10px * var(--font-scale)); }
+.settings-tab-panel:not(.active) { display:none; }
 .theme-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .theme-option { position:relative; display:block; padding:12px; border:1px solid #2b323b; border-radius:10px; background:#10141a; cursor:pointer; }
 .theme-option:has(input:checked) { border-color:var(--cyan); box-shadow:0 0 0 1px rgba(var(--theme-rgb),.2); }
@@ -98,7 +106,13 @@
 .theme-option.violet .theme-preview b { background:linear-gradient(145deg,#b49aff,#8b5cf6); }
 .theme-option.amber .theme-preview b { background:linear-gradient(145deg,#ffc857,#f59e0b); }
 .theme-option strong,.theme-option small { display:block; }
-.theme-option strong { margin-top:9px; font-size:10px; }
-.theme-option small { margin-top:3px; color:#69737e; font-size:8px; }
+.theme-option strong { margin-top:9px; font-size:calc(10px * var(--font-scale)); }
+.theme-option small { margin-top:3px; color:#69737e; font-size:calc(8px * var(--font-scale)); }
+.font-size-setting { padding:16px; border:1px solid #2b323b; border-radius:10px; background:#10141a; }
+.font-size-setting>div:first-child { display:flex; align-items:center; justify-content:space-between; }
+.font-size-setting label { font-size:calc(11px * var(--font-scale)); font-weight:700; }
+.font-size-setting output { min-width:58px; padding:5px 8px; border:1px solid var(--theme-border); border-radius:7px; color:var(--cyan-bright); background:var(--theme-surface); font-size:calc(9px * var(--font-scale)); font-weight:750; text-align:center; }
+.font-size-setting input { width:100%; margin:18px 0 8px; accent-color:var(--cyan); cursor:pointer; }
+.font-size-labels { display:flex; justify-content:space-between; color:#69737e; font-size:calc(8px * var(--font-scale)); }
 @keyframes settingsIn { from { opacity:0; transform:translateY(8px) scale(.985); } to { opacity:1; transform:none; } }
 @media(max-width:520px){.theme-options{grid-template-columns:1fr}}

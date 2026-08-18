@@ -75,13 +75,29 @@
   <div id="settings-modal" class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
     <section class="settings-dialog">
       <header class="settings-dialog-header"><div><span>APPLICATION</span><h2 id="settings-title">Settings</h2></div><button class="settings-close" type="button" aria-label="Close settings"><svg viewBox="0 0 16 16"><path d="m4 4 8 8m0-8-8 8"/></svg></button></header>
-      <div class="settings-dialog-body"><p>Choose the color theme used throughout the application.</p><div class="theme-options">
-        <label class="theme-option red"><input type="radio" name="app-theme" value="red"><span class="theme-preview"><i></i><b></b></span><strong>Black &amp; Red</strong><small>Dark interface with red accents</small></label>
-        <label class="theme-option cyan"><input type="radio" name="app-theme" value="cyan"><span class="theme-preview"><i></i><b></b></span><strong>Cyan</strong><small>Dark interface with cyan accents</small></label>
-        <label class="theme-option magenta"><input type="radio" name="app-theme" value="magenta"><span class="theme-preview"><i></i><b></b></span><strong>Magenta</strong><small>Dark interface with vivid pink accents</small></label>
-        <label class="theme-option violet"><input type="radio" name="app-theme" value="violet"><span class="theme-preview"><i></i><b></b></span><strong>Violet</strong><small>Dark interface with purple accents</small></label>
-        <label class="theme-option amber"><input type="radio" name="app-theme" value="amber"><span class="theme-preview"><i></i><b></b></span><strong>Amber</strong><small>Dark interface with warm gold accents</small></label>
-      </div></div>
+      <nav class="settings-tabs" role="tablist" aria-label="Settings sections">
+        <button id="settings-interface-tab" class="active" type="button" role="tab" aria-selected="true" aria-controls="settings-interface-panel" data-settings-tab="interface">Interface</button>
+        <button id="settings-theme-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-theme-panel" data-settings-tab="theme">Theme</button>
+      </nav>
+      <div class="settings-dialog-body">
+        <section id="settings-interface-panel" class="settings-tab-panel active" role="tabpanel" aria-labelledby="settings-interface-tab" data-settings-panel="interface">
+          <p>Adjust interface readability without changing the relative size of each text style.</p>
+          <div class="font-size-setting">
+            <div><label for="font-scale">Font size</label><output id="font-scale-value" for="font-scale">Default</output></div>
+            <input id="font-scale" type="range" min="100" max="150" value="100" step="5">
+            <div class="font-size-labels"><span>Default</span><span>Larger</span></div>
+          </div>
+        </section>
+        <section id="settings-theme-panel" class="settings-tab-panel" role="tabpanel" aria-labelledby="settings-theme-tab" data-settings-panel="theme" hidden>
+          <p>Choose the color theme used throughout the application.</p><div class="theme-options">
+            <label class="theme-option red"><input type="radio" name="app-theme" value="red"><span class="theme-preview"><i></i><b></b></span><strong>Black &amp; Red</strong><small>Dark interface with red accents</small></label>
+            <label class="theme-option cyan"><input type="radio" name="app-theme" value="cyan"><span class="theme-preview"><i></i><b></b></span><strong>Cyan</strong><small>Dark interface with cyan accents</small></label>
+            <label class="theme-option magenta"><input type="radio" name="app-theme" value="magenta"><span class="theme-preview"><i></i><b></b></span><strong>Magenta</strong><small>Dark interface with vivid pink accents</small></label>
+            <label class="theme-option violet"><input type="radio" name="app-theme" value="violet"><span class="theme-preview"><i></i><b></b></span><strong>Violet</strong><small>Dark interface with purple accents</small></label>
+            <label class="theme-option amber"><input type="radio" name="app-theme" value="amber"><span class="theme-preview"><i></i><b></b></span><strong>Amber</strong><small>Dark interface with warm gold accents</small></label>
+          </div>
+        </section>
+      </div>
     </section>
   </div>
   <script src="theme-controls.js"></script>

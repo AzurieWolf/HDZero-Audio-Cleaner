@@ -514,6 +514,13 @@ ipcMain.on('theme-changed', (_event, theme) => {
   if (editorView && !editorView.webContents.isDestroyed()) editorView.webContents.send('theme-changed', theme);
 });
 
+ipcMain.on('font-scale-changed', (_event, value) => {
+  const fontScale = Number(value);
+  if (!Number.isFinite(fontScale) || fontScale < 100 || fontScale > 150) return;
+  send('font-scale-changed', fontScale);
+  if (editorView && !editorView.webContents.isDestroyed()) editorView.webContents.send('font-scale-changed', fontScale);
+});
+
 ipcMain.handle('generate-preview', async (event, request) => {
   const session = editorSessions.get(event.sender.id);
   if (!session) throw new Error('The editor session is no longer available.');
