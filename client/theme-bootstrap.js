@@ -1,7 +1,8 @@
 (() => {
   try {
     const theme = localStorage.getItem('hdzero-theme');
-    document.documentElement.dataset.theme = theme === 'cyan' ? 'cyan' : 'red';
+    const themes = new Set(['red', 'cyan', 'magenta', 'violet', 'amber']);
+    document.documentElement.dataset.theme = themes.has(theme) ? theme : 'red';
   } catch {
     document.documentElement.dataset.theme = 'red';
   }

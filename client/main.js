@@ -509,7 +509,7 @@ ipcMain.on('request-settings', (event) => {
 });
 
 ipcMain.on('theme-changed', (_event, theme) => {
-  if (!['red', 'cyan'].includes(theme)) return;
+  if (!['red', 'cyan', 'magenta', 'violet', 'amber'].includes(theme)) return;
   send('theme-changed', theme);
   if (editorView && !editorView.webContents.isDestroyed()) editorView.webContents.send('theme-changed', theme);
 });

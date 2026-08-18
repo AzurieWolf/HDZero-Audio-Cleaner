@@ -3,9 +3,10 @@
   const closeButton = modal.querySelector('.settings-close');
   const themeInputs = Array.from(modal.querySelectorAll('input[name="app-theme"]'));
   const api = window.hdzero || window.videoEditor;
+  const themes = new Set(['red', 'cyan', 'magenta', 'violet', 'amber']);
 
   function normalizedTheme(theme) {
-    return theme === 'cyan' ? 'cyan' : 'red';
+    return themes.has(theme) ? theme : 'red';
   }
 
   function applyTheme(theme, notify = false) {
