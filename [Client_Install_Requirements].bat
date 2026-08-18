@@ -115,6 +115,14 @@ if errorlevel 1 goto DENOISE_FAILED
 py -3.11 -W ignore::UserWarning -c "import df, soundfile, torch, torchaudio"
 if errorlevel 1 goto DENOISE_FAILED
 
+if exist "dependencies\models\DeepFilterNet3\checkpoints\model_120.ckpt.best" goto DENOISE_MODEL_READY
+echo.
+echo Downloading the DeepFilterNet3 model used by noise reduction...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%CD%\install_deepfilter_model.ps1"
+if errorlevel 1 goto DENOISE_FAILED
+
+:DENOISE_MODEL_READY
+
 echo.
 echo ========================================
 echo All requirements installed successfully.

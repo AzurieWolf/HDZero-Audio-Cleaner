@@ -8,16 +8,6 @@ cd /d "%~dp0"
 cd client
 
 :: -----------------------------------------------------------
-:: Elevate to Administrator if needed
-:: -----------------------------------------------------------
-net session >nul 2>&1
-if %errorlevel% NEQ 0 (
-    echo Requesting administrative privileges...
-    powershell -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit
-)
-
-:: -----------------------------------------------------------
 :: Kill any running instances of the client to prevent folder locks
 :: -----------------------------------------------------------
 set "ProcessName=HDZero Audio Cleaner.exe"
@@ -79,6 +69,14 @@ echo ========================================
 echo Building project...
 echo ========================================
 
+if not exist "dependencies\models\DeepFilterNet3\checkpoints\model_120.ckpt.best" (
+    echo.
+    echo ERROR: The DeepFilterNet3 model checkpoint is missing.
+    echo Run [Client_Install_Requirements].bat before building the application.
+    pause
+    exit /b 1
+)
+
 call npm run build
 
 if %errorlevel% NEQ 0 (
@@ -91,14 +89,25 @@ if %errorlevel% NEQ 0 (
 )
 
 :: -----------------------------------------------------------
-:: Move win-unpacked output
+:: Copy win-unpacked output
 :: -----------------------------------------------------------
 if exist "dist\win-unpacked" (
     echo.
     echo ========================================
-    echo Moving build to dist-client...
+    echo Copying build to dist-client...
     echo ========================================
-    robocopy "dist\win-unpacked" "dist-client" /MOVE /E /NFL /NDL /NJH /NJS /NC /NS >nul
+    robocopy "dist\win-unpacked" "dist-client" /E /NFL /NDL /NJH /NJS /NC /NS >nul
+    set "ROBOCOPY_RESULT=!errorlevel!"
+    if !ROBOCOPY_RESULT! GEQ 8 (
+        echo.
+        echo ========================================
+        echo ERROR: Copying the packaged application failed.
+        echo Robocopy returned code !ROBOCOPY_RESULT!.
+        echo The original build remains in client\dist\win-unpacked.
+        echo ========================================
+        pause
+        exit /b 1
+    )
 ) else (
     echo.
     echo ========================================
@@ -109,7 +118,42 @@ if exist "dist\win-unpacked" (
 )
 
 :: -----------------------------------------------------------
-:: Final cleanup of dist-client folder (remove any leftover files)
+:: Verify the complete packaged application exists
+:: -----------------------------------------------------------
+if not exist "dist-client\HDZero Audio Cleaner.exe" goto BUILD_INCOMPLETE
+if not exist "dist-client\resources\denoise\denoise_worker.py" goto BUILD_INCOMPLETE
+if not exist "dist-client\resources\models\DeepFilterNet3\checkpoints\model_120.ckpt.best" goto BUILD_INCOMPLETE
+
+if exist "dist-client\HDZero Audio Cleaner.exe" (
+    echo.
+    echo ========================================
+    echo Build successful. dist-client is ready.
+    echo ========================================
+) else (
+    echo.
+    echo ========================================
+    echo ERROR: dist-client is incomplete.
+    echo ========================================
+    pause
+    exit /b 1
+)
+
+goto BUILD_COMPLETE
+
+:BUILD_INCOMPLETE
+echo.
+echo ========================================
+echo ERROR: dist-client is incomplete.
+echo The executable, denoise worker, or model checkpoint was not copied.
+echo The original build remains in client\dist\win-unpacked for inspection.
+echo ========================================
+pause
+exit /b 1
+
+:BUILD_COMPLETE
+
+:: -----------------------------------------------------------
+:: Remove the temporary build only after the copied package is verified
 :: -----------------------------------------------------------
 if exist dist (
     echo.
@@ -118,23 +162,6 @@ if exist dist (
     echo ========================================
     attrib -r -s -h dist /s /d >nul 2>&1
     rmdir /s /q dist
-)
-
-:: -----------------------------------------------------------
-:: Verify dist-client folder exists
-:: -----------------------------------------------------------
-if exist dist-client (
-    echo.
-    echo ========================================
-    echo Build successful. dist-client is ready.
-    echo ========================================
-) else (
-    echo.
-    echo ========================================
-    echo ERROR: dist-client folder not found after build!
-    echo ========================================
-    pause
-    exit /b 1
 )
 
 REM === Open dist-client folder ===

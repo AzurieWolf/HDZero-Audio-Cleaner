@@ -192,10 +192,16 @@ function runProcess(command, args, { onStdout } = {}) {
   return new Promise((resolve, reject) => {
     if (cancelRequested) return reject(new Error('Processing cancelled.'));
     let stderr = '';
+    let stdout = '';
     let settled = false;
     const child = spawn(command, args, { windowsHide: true });
     activeProcess = child;
-    if (onStdout) child.stdout.on('data', (chunk) => onStdout(chunk.toString()));
+    child.stdout.on('data', (chunk) => {
+      const text = chunk.toString();
+      stdout += text;
+      if (stdout.length > 12000) stdout = stdout.slice(-12000);
+      if (onStdout) onStdout(text);
+    });
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString();
       if (stderr.length > 12000) stderr = stderr.slice(-12000);
@@ -212,7 +218,21 @@ function runProcess(command, args, { onStdout } = {}) {
       activeProcess = null;
       if (cancelRequested) return reject(new Error('Processing cancelled.'));
       if (code === 0) resolve();
-      else reject(new Error(stderr.trim().split(/\r?\n/).slice(-6).join('\n') || `Process exited with code ${code}.`));
+      else {
+        const diagnosticLines = stderr.trim().split(/\r?\n/).filter((line) => {
+          const text = line.trim();
+          return text
+            && !text.includes('torchaudio.backend.common.AudioMetaData')
+            && !text.startsWith('from torchaudio.backend.common import AudioMetaData')
+            && !text.startsWith('fatal: not a git repository');
+        });
+        const logLines = stdout.trim().split(/\r?\n/).filter((line) => {
+          const text = line.trim();
+          return text && !text.startsWith('HDZERO_PROGRESS=');
+        });
+        const details = [...logLines.slice(-5), ...diagnosticLines.slice(-5)].join('\n');
+        reject(new Error(details || `Process exited with code ${code}.`));
+      }
     });
   });
 }
@@ -298,6 +318,11 @@ function channelFilter(channel) {
   if (channel === 'right') return ['-af', 'pan=mono|c0=c1'];
   if (channel === 'left') return ['-af', 'pan=mono|c0=c0'];
   return [];
+}
+
+function previewPlaybackFilter(channel) {
+  if (channel === 'both') return [];
+  return ['-af', 'pan=stereo|c0=c0|c1=c0'];
 }
 
 async function processOne(item, settings, index, total) {
@@ -402,7 +427,8 @@ async function generatePreview(session, request) {
     editorProgress(session, 0, 'Extracting preview audio');
     const extractionArgs = withFfmpegProgress([
       '-y', '-hide_banner', '-loglevel', 'error', '-ss', String(start), '-t', String(duration),
-      '-i', session.input, '-map', '0:a:0', '-ar', '48000', '-c:a', 'pcm_s16le', extracted
+      '-i', session.input, '-map', '0:a:0', ...channelFilter(settings.channel),
+      '-ar', '48000', '-c:a', 'pcm_s16le', extracted
     ]);
     await runProcess(ffmpeg, extractionArgs, {
       onStdout: createProgressReader(duration, 0, 25, (progress) => editorProgress(session, progress, `Extracting audio · ${progress}%`))
@@ -438,7 +464,8 @@ async function generatePreview(session, request) {
       '-y', '-hide_banner', '-loglevel', 'error', '-ss', String(start), '-t', String(duration),
       '-i', session.input, '-i', enhanced, '-map', '0:v:0', '-map', '1:a:0',
       '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
-      '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', output
+      ...previewPlaybackFilter(settings.channel), '-c:a', 'aac', '-b:a', '256k',
+      '-shortest', '-movflags', '+faststart', output
     ]);
     await runProcess(ffmpeg, renderArgs, {
       onStdout: createProgressReader(duration, 70, 100, (progress) => editorProgress(session, progress, `Rendering denoised preview · ${progress}%`))
