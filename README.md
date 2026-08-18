@@ -51,6 +51,9 @@ Use the title-bar **Settings** button to switch between:
 
 - **Black & Red** — a dark interface with red accents.
 - **Cyan** — a dark interface with cyan accents.
+- **Magenta** — a dark interface with vivid pink accents.
+- **Violet** — a dark interface with purple accents.
+- **Amber** — a dark interface with warm gold accents.
 
 The selected theme is remembered across restarts and is applied to both the queue and editor.
 
