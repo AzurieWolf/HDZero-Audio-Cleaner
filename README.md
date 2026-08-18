@@ -72,7 +72,7 @@ Setup:
 2. Allow the installer to install Python 3.11 if AI noise reduction is required.
 3. Run `[Client_Run].bat` to start the application.
 
-The requirements installer installs the application packages and prepares FFmpeg automatically. Channel cleanup remains available if the optional AI noise-reduction setup is skipped or unavailable.
+The requirements installer installs the application packages, prepares FFmpeg, and downloads the DeepFilterNet3 model used by AI noise reduction. Channel cleanup remains available if the optional AI noise-reduction setup is skipped or unavailable.
 
 ## Build
 
