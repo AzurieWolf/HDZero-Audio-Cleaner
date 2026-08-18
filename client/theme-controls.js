@@ -7,7 +7,7 @@
   const fontScaleInput = modal.querySelector('#font-scale');
   const fontScaleValue = modal.querySelector('#font-scale-value');
   const api = window.hdzero || window.videoEditor;
-  const themes = new Set(['red', 'cyan', 'magenta', 'violet', 'amber']);
+  const themes = new Set(['red', 'cyan', 'magenta', 'violet', 'amber', 'emerald']);
 
   function prepareScalableFonts() {
     const scaleValue = (value) => value.replace(/(\d+(?:\.\d+)?)(px|rem|em|vw)/g, 'calc($1$2 * var(--font-scale))');
