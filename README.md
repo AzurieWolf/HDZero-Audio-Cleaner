@@ -1,36 +1,75 @@
 # HDZero Audio Cleaner
 
-An Electron desktop application for repairing and cleaning audio in HDZero video recordings.
+A Windows desktop application for repairing, previewing, and cleaning audio in HDZero video recordings.
 
-- HDZero channel repair: keep the right goggle-microphone channel (or the left VTX channel) and convert it to mono.
-- Optional DeepFilterNet 3 denoising with adjustable maximum attenuation.
-- Batch processing: add or drag in multiple videos and process them sequentially.
-- Per-video editor with source playback, an automatic highlighted A–B range, and 5, 10, 20, or 30-second processed previews.
-- Per-video custom audio settings with a visible `CUSTOM` indicator in the main queue.
+## Features
 
-The video stream is copied without re-encoding. Output filenames describe the selected work, such as `_fixed`, `_denoised-30db`, or `_fixed+denoised-30db`. The app chooses a numbered suffix rather than overwriting an existing output.
+- Add one video or build a queue by browsing or dragging and dropping multiple files.
+- Process queued videos sequentially with live progress percentages.
+- Keep the left channel, keep the right channel, or preserve the original stereo audio.
+- Send a kept channel through both speakers for a clean mono result.
+- Optionally reduce background noise with DeepFilterNet 3.
+- Adjust the maximum noise-reduction attenuation from natural to aggressive.
+- Apply one set of global settings or give individual videos custom settings.
+- Preserve the original video stream without re-encoding it.
+- Keep original files untouched and avoid overwriting existing results.
 
-## Run
+## Video editor
 
-1. Run `[Client_Install_Requirements].bat` once. It installs Node dependencies, verifies or downloads FFmpeg, and installs Python/DeepFilterNet for AI noise reduction.
-2. Run `[Client_Run].bat`.
-3. Add videos, choose channel handling, optionally enable AI noise reduction, and select **Process queue**.
+Select **Edit / preview** beside any queued video to open the editor inside the main window.
 
-Use **Edit / preview** on any queued video to slide from the queue into the editor in the same window. Use **Back** in the upper-left corner to return to the preserved queue. Choose a timeline position and preview duration; the editor calculates the A–B range automatically. Enable **Live timeline sync** when you want that range to follow source playback; it is off by default, while manually moving either timeline thumb still updates the range. Channel choices are monitored live: selecting one channel mutes the other and sends the kept channel to both speakers. Preview generation is only used for DeepFilterNet noise reduction. Choose **Apply to this video** to override the global settings for only that queue item, **Use global settings** to remove the override, or **Use as global settings** to send the editor choices to the main window and all queued videos without custom overrides.
+The editor provides:
 
-By default, each result is saved in a **Fixed Videos** folder beside its source. Disable **Place processed videos in a folder** to save directly beside the source, or use **Change** under Output location to choose another base folder.
-Enable **Open file location when complete** to open every distinct output folder once after a successful batch.
+- Source video playback in a stable 16:9 viewer.
+- Live left-channel or right-channel muting without generating a preview.
+- Automatic A–B preview ranges of 5, 10, 20, or 30 seconds.
+- Optional live timeline synchronization with video playback.
+- DeepFilterNet preview generation for the selected range.
+- Original and generated-preview playback switching.
+- Per-video settings marked with a `CUSTOM` badge in the queue.
+- Controls to apply settings to one video, return to global settings, or make the editor settings global.
 
-Use the title-bar **Settings** button to switch between the default **Black & Red** theme and the original **Cyan** theme. The selection is remembered across restarts and applies to both the queue and editor.
+## Output files
 
-## Requirements
+Processed videos are placed in a **Fixed Videos** folder beside each source by default. This folder option can be disabled, or a different base output location can be selected.
 
-- Windows 10/11
-- Node.js and npm
-- Python 3.11 for optional DeepFilterNet denoising. The installer can download Python 3.11.9 from python.org after asking for confirmation.
+Output filenames describe the work performed:
 
-Channel removal uses FFmpeg and does not require Python. If `client\dependencies\ffmpeg.exe` is missing, the installer downloads and verifies the Windows release essentials build automatically. If that fails, it opens the FFmpeg download page and explains where to place the executable. AI noise reduction uses DeepFilterNet 3 with CPU-only Torch and TorchAudio 2.1.2.
+- `flight_fixed.mp4`
+- `flight_denoised-30db.mp4`
+- `flight_fixed+denoised-30db.mp4`
+
+If a filename already exists, the application adds a numbered suffix instead of replacing it. **Open file location when complete** opens each distinct output folder only once after the batch finishes.
+
+## Supported video formats
+
+MP4, MKV, MOV, AVI, WEBM, and M4V.
+
+## Appearance
+
+Use the title-bar **Settings** button to switch between:
+
+- **Black & Red** — a dark interface with red accents.
+- **Cyan** — a dark interface with cyan accents.
+
+The selected theme is remembered across restarts and is applied to both the queue and editor.
+
+## Install and run
+
+Requirements:
+
+- Windows 10 or Windows 11
+- Node.js with npm
+- Python 3.11 for optional AI noise reduction
+
+Setup:
+
+1. Run `[Client_Install_Requirements].bat` once.
+2. Allow the installer to install Python 3.11 if AI noise reduction is required.
+3. Run `[Client_Run].bat` to start the application.
+
+The requirements installer installs the application packages and prepares FFmpeg automatically. Channel cleanup remains available if the optional AI noise-reduction setup is skipped or unavailable.
 
 ## Build
 
-Run `[Client_Build].bat`. The unpacked Windows application is placed in `client\dist-client`. The build includes FFmpeg, the DeepFilterNet 3 model, and the Python bridge. AI denoising requires Python 3.11 with the packages from `client\requirements.txt` on the target computer.
+Run `[Client_Build].bat` to create the unpacked Windows application in `client\dist-client`.
