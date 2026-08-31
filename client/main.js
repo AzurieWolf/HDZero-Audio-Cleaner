@@ -4,6 +4,7 @@ const os = require('os');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell } = require('electron');
+const { moveOriginalVideo } = require('./file-organization');
 
 let mainWindow;
 let editorView = null;
@@ -396,8 +397,9 @@ async function processOne(item, settings, index, total) {
         onStdout: createProgressReader(duration, 0, 100, (progress) => update('processing', progress, `Cleaning audio channel · ${progress}%`))
       });
     }
-    update('complete', 100, 'Complete');
-    return { id: item.id, ok: true, output };
+    const original = settings.moveOriginals ? await moveOriginalVideo(item.path) : item.path;
+    update('complete', 100, settings.moveOriginals ? 'Complete · original moved' : 'Complete');
+    return { id: item.id, ok: true, output, original };
   } catch (error) {
     if (fs.existsSync(output)) await fs.promises.rm(output, { force: true }).catch(() => {});
     update(cancelRequested ? 'cancelled' : 'failed', 0, error.message);

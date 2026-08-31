@@ -68,11 +68,12 @@
           </div>
         </div>
 
-        <label class="completion-toggle output-folder-toggle"><span><strong>Place processed videos in a folder</strong><small>Creates a Fixed Videos folder</small></span><span class="switch"><input id="organize-outputs" type="checkbox" checked><span></span></span></label>
-        <div class="output-row"><div><strong>Output location</strong><span id="output-label">Each source / Fixed Videos</span></div><button id="output-button" class="icon-button" type="button" title="Choose output folder">Change</button></div>
+        <label class="completion-toggle original-folder-toggle"><span><strong>Move original videos into a folder</strong><small>Moves successfully processed videos into an Original folder</small></span><span class="switch"><input id="move-originals" type="checkbox" checked><span></span></span></label>
+        <label class="completion-toggle output-folder-toggle"><span><strong>Place processed videos in a folder</strong><small>Places processed videos in a dedicated output folder</small></span><span class="switch"><input id="organize-outputs" type="checkbox"><span></span></span></label>
+        <div class="output-row"><div><strong>Output location</strong><span id="output-label">Next to each source</span></div><button id="output-button" class="icon-button" type="button" title="Choose output folder">Change</button></div>
         <label class="completion-toggle"><span><strong>Open file location when complete</strong><small>Each output folder opens only once</small></span><span class="switch"><input id="open-when-complete" type="checkbox"><span></span></span></label>
         <div class="action-row"><button id="cancel-button" class="cancel-button" type="button" hidden>Cancel</button><button id="process-button" class="primary process" type="button" disabled><span>Process queue</span><small id="process-caption">Add videos to begin</small></button></div>
-        <p id="summary" class="summary">Video streams are copied without re-encoding. Originals remain untouched.</p>
+        <p id="summary" class="summary">Completed originals move into an Original folder.</p>
       </aside>
     </section>
   </main>

@@ -10,7 +10,7 @@ const elements = {
   denoise: document.getElementById('denoise-toggle'), attenuation: document.getElementById('attenuation'),
   attenuationValue: document.getElementById('attenuation-value'), attenuationControls: document.getElementById('attenuation-controls'),
   output: document.getElementById('output-button'), outputLabel: document.getElementById('output-label'),
-  organizeOutputs: document.getElementById('organize-outputs'),
+  moveOriginals: document.getElementById('move-originals'), organizeOutputs: document.getElementById('organize-outputs'),
   openWhenComplete: document.getElementById('open-when-complete'), summary: document.getElementById('summary')
 };
 
@@ -64,6 +64,7 @@ function render() {
   elements.clear.disabled = state.processing || state.items.length === 0;
   elements.add.disabled = state.processing;
   elements.output.disabled = state.processing;
+  elements.moveOriginals.disabled = state.processing;
   elements.organizeOutputs.disabled = state.processing;
   elements.openWhenComplete.disabled = state.processing;
   elements.process.disabled = state.processing || state.items.length === 0;
@@ -114,6 +115,11 @@ document.querySelectorAll('input[name="channel"]').forEach((input) => input.addE
 
 elements.denoise.addEventListener('change', () => elements.attenuationControls.classList.toggle('disabled', !elements.denoise.checked));
 elements.attenuation.addEventListener('input', () => { elements.attenuationValue.value = `${elements.attenuation.value} dB`; });
+elements.moveOriginals.addEventListener('change', () => {
+  elements.summary.textContent = elements.moveOriginals.checked
+    ? 'Completed originals move into an Original folder.'
+    : 'Original videos remain in their current locations.';
+});
 elements.organizeOutputs.addEventListener('change', updateOutputLabel);
 elements.output.addEventListener('click', async () => {
   const selected = await window.hdzero.selectOutputDirectory();
@@ -133,6 +139,7 @@ elements.process.addEventListener('click', async () => {
       denoise: elements.denoise.checked,
       attenuation: elements.denoise.checked ? Number(elements.attenuation.value) : null,
       outputDirectory: state.outputDirectory,
+      moveOriginals: elements.moveOriginals.checked,
       organizeOutputs: elements.organizeOutputs.checked,
       openWhenComplete: elements.openWhenComplete.checked
     }
@@ -157,6 +164,11 @@ window.hdzero.onFinished(({ results, cancelled }) => {
   elements.cancel.textContent = 'Cancel';
   const completed = results.filter((result) => result.ok).length;
   const failed = results.filter((result) => !result.ok && !result.cancelled).length;
+  for (const result of results) {
+    if (!result.ok || !result.original) continue;
+    const item = state.items.find((candidate) => candidate.id === result.id);
+    if (item) item.path = result.original;
+  }
   elements.summary.textContent = cancelled ? `Batch cancelled · ${completed} completed` : `Batch finished · ${completed} completed${failed ? ` · ${failed} failed` : ''}`;
   render();
 });
