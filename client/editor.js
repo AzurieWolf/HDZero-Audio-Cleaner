@@ -4,10 +4,6 @@ const state = {
   audioGraph: null, playbackFrame: null, timelineSync: false
 };
 
-window.videoEditor.onTransitionStart(() => {
-  requestAnimationFrame(() => document.body.classList.add('editor-enter'));
-});
-
 const elements = {
   player: document.getElementById('player'), empty: document.getElementById('viewer-empty'), loading: document.getElementById('video-loading'),
   name: document.getElementById('video-name'), path: document.getElementById('video-path'),
@@ -348,17 +344,7 @@ window.videoEditor.onGlobalSettings((settings) => {
 const navigateBack = () => {
   if (document.body.classList.contains('editor-exit')) return;
   document.body.classList.add('editor-exit');
-  let completed = false;
-  const handleAnimationEnd = (event) => {
-    if (event.animationName === 'editorSwipeOut') finish();
-  };
-  const finish = () => {
-    if (completed) return;
-    completed = true;
-    document.body.removeEventListener('animationend', handleAnimationEnd);
-    window.videoEditor.goBack();
-  };
-  document.body.addEventListener('animationend', handleAnimationEnd);
-  setTimeout(finish, 400);
+  const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300;
+  setTimeout(() => window.videoEditor.goBack(), duration);
 };
 window.videoEditor.onCloseRequested(navigateBack);

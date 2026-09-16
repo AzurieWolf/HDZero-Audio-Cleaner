@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
-const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, WebContentsView, dialog, ipcMain, nativeTheme, shell } = require('electron');
 const { moveOriginalVideo, movesOriginal, outputDirectoryFor } = require('./file-organization');
 
 const developerMode = process.argv.includes('--developer-mode');
@@ -11,6 +11,8 @@ let mainWindow;
 let editorView = null;
 let editorViewReady = null;
 let editorOpening = false;
+let editorViewPosition = 1;
+let editorViewAnimationToken = 0;
 let activeProcess = null;
 let cancelRequested = false;
 let lastVideoDirectory = null;
@@ -74,6 +76,33 @@ function sendWindowState(window) {
   }
 }
 
+function layoutEditorView() {
+  if (!mainWindow || mainWindow.isDestroyed() || !editorView || editorView.webContents.isDestroyed()) return;
+  const [width, height] = mainWindow.getContentSize();
+  editorView.setBounds({
+    x: Math.round(width * editorViewPosition),
+    y: 48,
+    width,
+    height: Math.max(0, height - 48)
+  });
+}
+
+function animateEditorView(target, duration) {
+  const token = ++editorViewAnimationToken;
+  const startPosition = editorViewPosition;
+  const startedAt = Date.now();
+  const effectiveDuration = nativeTheme.shouldUseReducedMotion ? 0 : duration;
+
+  const step = () => {
+    if (token !== editorViewAnimationToken || !editorView || editorView.webContents.isDestroyed()) return;
+    const progress = effectiveDuration ? Math.min(1, (Date.now() - startedAt) / effectiveDuration) : 1;
+    editorViewPosition = startPosition + ((target - startPosition) * progress);
+    layoutEditorView();
+    if (progress < 1) setTimeout(step, 16);
+  };
+  step();
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1180,
@@ -105,9 +134,7 @@ function createWindow() {
   mainWindow.on('maximize', () => sendWindowState(mainWindow));
   mainWindow.on('unmaximize', () => sendWindowState(mainWindow));
   mainWindow.on('resize', () => {
-    if (!editorView || editorView.webContents.isDestroyed()) return;
-    const [width, height] = mainWindow.getContentSize();
-    editorView.setBounds({ x: 0, y: 48, width, height: Math.max(0, height - 48) });
+    layoutEditorView();
   });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
@@ -116,6 +143,8 @@ function closeEditorView() {
   if (!editorView || !mainWindow || mainWindow.isDestroyed()) return;
   const view = editorView;
   const session = editorSessions.get(view.webContents.id);
+  editorViewAnimationToken += 1;
+  editorViewPosition = 1;
   editorSessions.delete(view.webContents.id);
   if (session && session.tempDirectory) fs.promises.rm(session.tempDirectory, { recursive: true, force: true }).catch(() => {});
   send('editor-visibility-changed', false);
@@ -166,13 +195,13 @@ async function createEditorView(payload) {
     };
     const editorWebContentsId = editorView.webContents.id;
     editorSessions.set(editorWebContentsId, session);
-    const [width, height] = mainWindow.getContentSize();
-    editorView.setBounds({ x: 0, y: 48, width, height: Math.max(0, height - 48) });
+    editorViewPosition = 1;
+    layoutEditorView();
     mainWindow.contentView.addChildView(editorView);
     session.attached = true;
     send('editor-visibility-changed', true);
     session.webContents.focus();
-    session.webContents.send('editor-start-transition');
+    animateEditorView(0, 340);
     editorOpening = false;
     const duration = await probeDuration(getFfmpegPath(), session.input);
     if (session.webContents.isDestroyed()) return;
@@ -569,6 +598,7 @@ ipcMain.handle('close-editor', (event) => {
 
 ipcMain.on('request-editor-back', (event) => {
   if (!mainWindow || event.sender.id !== mainWindow.webContents.id || !editorView || editorView.webContents.isDestroyed()) return;
+  animateEditorView(1, 280);
   editorView.webContents.send('editor-request-close');
 });
 
