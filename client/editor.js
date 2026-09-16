@@ -5,6 +5,7 @@ const state = {
 };
 
 const elements = {
+  queueSnapshot: document.getElementById('queue-transition-snapshot'),
   player: document.getElementById('player'), empty: document.getElementById('viewer-empty'), loading: document.getElementById('video-loading'),
   name: document.getElementById('video-name'), path: document.getElementById('video-path'),
   custom: document.getElementById('custom-state'), timeline: document.getElementById('timeline'),
@@ -21,6 +22,20 @@ const elements = {
   progressFill: document.getElementById('preview-progress-fill'), progressStatus: document.getElementById('preview-status'),
   progressPercent: document.getElementById('preview-percent')
 };
+
+window.videoEditor.onTransitionPrepare(async ({ direction, snapshot }) => {
+  if (direction === 'in') document.body.classList.remove('editor-enter', 'editor-exit');
+  else document.body.classList.remove('editor-exit');
+  if (snapshot) {
+    elements.queueSnapshot.src = snapshot;
+    try { await elements.queueSnapshot.decode(); } catch {}
+  }
+  window.videoEditor.transitionReady();
+});
+
+window.videoEditor.onTransitionStart(() => {
+  requestAnimationFrame(() => document.body.classList.add('editor-enter'));
+});
 
 function showVideoLoading(message = 'Preparing playback...') {
   elements.loading.querySelector('small').textContent = message;
@@ -344,7 +359,17 @@ window.videoEditor.onGlobalSettings((settings) => {
 const navigateBack = () => {
   if (document.body.classList.contains('editor-exit')) return;
   document.body.classList.add('editor-exit');
-  const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300;
-  setTimeout(() => window.videoEditor.goBack(), duration);
+  let completed = false;
+  const finish = () => {
+    if (completed) return;
+    completed = true;
+    document.body.removeEventListener('animationend', handleAnimationEnd);
+    window.videoEditor.goBack();
+  };
+  const handleAnimationEnd = (event) => {
+    if (event.animationName === 'editorPageOut') finish();
+  };
+  document.body.addEventListener('animationend', handleAnimationEnd);
+  setTimeout(finish, 400);
 };
 window.videoEditor.onCloseRequested(navigateBack);

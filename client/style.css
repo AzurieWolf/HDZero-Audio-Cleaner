@@ -198,19 +198,6 @@ main {
     inset: 48px 0 0;
     overflow: auto;
     padding: 24px clamp(24px, 4vw, 24px) 24px;
-    transform: translate3d(0, 0, 0);
-    transition: transform .34s linear;
-    will-change: transform;
-}
-
-body.editor-active main {
-    transform: translate3d(-100%, 0, 0);
-}
-
-body.editor-returning main {
-    transform: translate3d(0, 0, 0);
-    transition-duration: .28s;
-    transition-timing-function: linear;
 }
 
 .hero {
@@ -1164,10 +1151,6 @@ legend {
 }
 
 @media(prefers-reduced-motion:reduce) {
-    main {
-        transition-duration: .01ms;
-    }
-
     .output-warning-modal,
     .output-warning-dialog,
     .output-warning-modal.closing,

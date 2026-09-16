@@ -10,6 +10,17 @@ contextBridge.exposeInMainWorld('videoEditor', {
   saveCustomSettings: (settings) => ipcRenderer.invoke('save-custom-settings', settings),
   useAsGlobalSettings: (settings) => ipcRenderer.invoke('use-as-global-settings', settings),
   clearCustomSettings: () => ipcRenderer.invoke('clear-custom-settings'),
+  transitionReady: () => ipcRenderer.send('editor-transition-ready'),
+  onTransitionPrepare: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('editor-prepare-transition', listener);
+    return () => ipcRenderer.removeListener('editor-prepare-transition', listener);
+  },
+  onTransitionStart: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('editor-start-transition', listener);
+    return () => ipcRenderer.removeListener('editor-start-transition', listener);
+  },
   onCloseRequested: (callback) => {
     const listener = () => callback();
     ipcRenderer.on('editor-request-close', listener);

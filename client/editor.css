@@ -28,11 +28,64 @@ body {
     font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
 }
 
+.queue-transition-snapshot {
+    position: fixed;
+    z-index: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
 .editor-surface {
     position: fixed;
+    z-index: 1;
     inset: 0;
     overflow: hidden;
     background: radial-gradient(circle at 15% 2%, rgba(34, 211, 197, .09), transparent 28rem), var(--bg);
+    transform: translate3d(100%, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+body.editor-enter .queue-transition-snapshot {
+    animation: queuePageOut .34s cubic-bezier(.2, .8, .2, 1) forwards;
+}
+
+body.editor-enter .editor-surface {
+    animation: editorPageIn .34s cubic-bezier(.2, .8, .2, 1) forwards;
+}
+
+body.editor-exit .queue-transition-snapshot {
+    animation: queuePageIn .28s cubic-bezier(.4, 0, .6, 1) forwards;
+}
+
+body.editor-exit .editor-surface {
+    animation: editorPageOut .28s cubic-bezier(.4, 0, .6, 1) forwards;
+}
+
+@keyframes queuePageOut {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-100%, 0, 0); }
+}
+
+@keyframes editorPageIn {
+    from { transform: translate3d(100%, 0, 0); }
+    to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes queuePageIn {
+    from { transform: translate3d(-100%, 0, 0); }
+    to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes editorPageOut {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(100%, 0, 0); }
 }
 
 button,
@@ -804,6 +857,13 @@ legend {
 }
 
 @media(prefers-reduced-motion:reduce) {
+    body.editor-enter .queue-transition-snapshot,
+    body.editor-enter .editor-surface,
+    body.editor-exit .queue-transition-snapshot,
+    body.editor-exit .editor-surface {
+        animation-duration: .01ms;
+    }
+
     .video-loading i {
         animation-duration: 1.5s
     }

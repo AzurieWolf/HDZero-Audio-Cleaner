@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
-const { app, BrowserWindow, WebContentsView, dialog, ipcMain, nativeTheme, shell } = require('electron');
+const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell } = require('electron');
 const { moveOriginalVideo, movesOriginal, outputDirectoryFor } = require('./file-organization');
 
 const developerMode = process.argv.includes('--developer-mode');
@@ -11,8 +11,6 @@ let mainWindow;
 let editorView = null;
 let editorViewReady = null;
 let editorOpening = false;
-let editorViewPosition = 1;
-let editorViewAnimationToken = 0;
 let activeProcess = null;
 let cancelRequested = false;
 let lastVideoDirectory = null;
@@ -80,27 +78,38 @@ function layoutEditorView() {
   if (!mainWindow || mainWindow.isDestroyed() || !editorView || editorView.webContents.isDestroyed()) return;
   const [width, height] = mainWindow.getContentSize();
   editorView.setBounds({
-    x: Math.round(width * editorViewPosition),
+    x: 0,
     y: 48,
     width,
     height: Math.max(0, height - 48)
   });
 }
 
-function animateEditorView(target, duration) {
-  const token = ++editorViewAnimationToken;
-  const startPosition = editorViewPosition;
-  const startedAt = Date.now();
-  const effectiveDuration = nativeTheme.shouldUseReducedMotion ? 0 : duration;
+async function captureQueueSnapshot() {
+  if (!mainWindow || mainWindow.isDestroyed()) return null;
+  const [width, height] = mainWindow.getContentSize();
+  const image = await mainWindow.webContents.capturePage({
+    x: 0,
+    y: 48,
+    width,
+    height: Math.max(1, height - 48)
+  });
+  return image.toDataURL();
+}
 
-  const step = () => {
-    if (token !== editorViewAnimationToken || !editorView || editorView.webContents.isDestroyed()) return;
-    const progress = effectiveDuration ? Math.min(1, (Date.now() - startedAt) / effectiveDuration) : 1;
-    editorViewPosition = startPosition + ((target - startPosition) * progress);
-    layoutEditorView();
-    if (progress < 1) setTimeout(step, 16);
-  };
-  step();
+function prepareEditorTransition(session, direction, snapshot) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      session.transitionReady = null;
+      resolve();
+    };
+    session.transitionReady = finish;
+    session.webContents.send('editor-prepare-transition', { direction, snapshot });
+    setTimeout(finish, 1000);
+  });
 }
 
 function createWindow() {
@@ -143,8 +152,7 @@ function closeEditorView() {
   if (!editorView || !mainWindow || mainWindow.isDestroyed()) return;
   const view = editorView;
   const session = editorSessions.get(view.webContents.id);
-  editorViewAnimationToken += 1;
-  editorViewPosition = 1;
+  if (session?.transitionReady) session.transitionReady();
   editorSessions.delete(view.webContents.id);
   if (session && session.tempDirectory) fs.promises.rm(session.tempDirectory, { recursive: true, force: true }).catch(() => {});
   send('editor-visibility-changed', false);
@@ -191,17 +199,19 @@ async function createEditorView(payload) {
       globalSettings: payload.globalSettings,
       customSettings: payload.customSettings || null,
       tempDirectory: null,
-      attached: false
+      attached: false,
+      transitionReady: null
     };
     const editorWebContentsId = editorView.webContents.id;
     editorSessions.set(editorWebContentsId, session);
-    editorViewPosition = 1;
+    const snapshot = await captureQueueSnapshot();
+    await prepareEditorTransition(session, 'in', snapshot);
     layoutEditorView();
     mainWindow.contentView.addChildView(editorView);
     session.attached = true;
     send('editor-visibility-changed', true);
     session.webContents.focus();
-    animateEditorView(0, 340);
+    session.webContents.send('editor-start-transition');
     editorOpening = false;
     const duration = await probeDuration(getFfmpegPath(), session.input);
     if (session.webContents.isDestroyed()) return;
@@ -596,9 +606,18 @@ ipcMain.handle('close-editor', (event) => {
   return true;
 });
 
-ipcMain.on('request-editor-back', (event) => {
+ipcMain.on('editor-transition-ready', (event) => {
+  const session = editorSessions.get(event.sender.id);
+  if (session?.transitionReady) session.transitionReady();
+});
+
+ipcMain.on('request-editor-back', async (event) => {
   if (!mainWindow || event.sender.id !== mainWindow.webContents.id || !editorView || editorView.webContents.isDestroyed()) return;
-  animateEditorView(1, 280);
+  const session = editorSessions.get(editorView.webContents.id);
+  if (!session) return;
+  const snapshot = await captureQueueSnapshot().catch(() => null);
+  if (!editorView || editorView.webContents.isDestroyed() || !editorSessions.has(editorView.webContents.id)) return;
+  await prepareEditorTransition(session, 'out', snapshot);
   editorView.webContents.send('editor-request-close');
 });
 

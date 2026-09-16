@@ -363,16 +363,11 @@ window.hdzero.onGlobalSettings((settings) => {
 });
 
 window.hdzero.onEditorVisibility((visible) => {
-  if (visible) document.body.classList.remove('editor-returning');
   document.body.classList.toggle('editor-active', visible);
-  if (!visible) document.body.classList.remove('editor-returning');
 });
 
 document.getElementById('editor-back-button').addEventListener('click', () => {
-  if (!document.body.classList.contains('editor-active')) return;
-  document.body.classList.add('editor-returning');
-  document.body.classList.remove('editor-active');
-  window.hdzero.requestEditorBack();
+  if (document.body.classList.contains('editor-active')) window.hdzero.requestEditorBack();
 });
 
 const controls = document.querySelector('.window-controls');
