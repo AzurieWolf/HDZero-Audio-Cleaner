@@ -513,6 +513,40 @@ ipcMain.handle('select-output-directory', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
+ipcMain.handle('open-output-directory', async (event, payload) => {
+  if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return false;
+  const mode = payload?.mode;
+  const validModes = new Set(['together', 'originals', 'fixed', 'custom']);
+  if (!validModes.has(mode)) throw new Error('The selected output mode is invalid.');
+
+  let directories = [];
+  if (mode === 'custom') {
+    if (typeof payload.outputDirectory === 'string' && path.isAbsolute(payload.outputDirectory)) {
+      directories.push(payload.outputDirectory);
+    }
+  } else if (Array.isArray(payload?.sourcePaths)) {
+    directories = payload.sourcePaths
+      .filter((sourcePath) => typeof sourcePath === 'string' && path.isAbsolute(sourcePath))
+      .map((sourcePath) => outputDirectoryFor(path.dirname(sourcePath), mode));
+  }
+
+  const uniqueDirectories = new Map();
+  for (const directory of directories) {
+    const key = process.platform === 'win32' ? directory.toLowerCase() : directory;
+    if (!uniqueDirectories.has(key)) uniqueDirectories.set(key, directory);
+  }
+
+  for (const directory of uniqueDirectories.values()) {
+    if (mode === 'fixed') await fs.promises.mkdir(directory, { recursive: true });
+    let isDirectory = false;
+    try { isDirectory = (await fs.promises.stat(directory)).isDirectory(); } catch {}
+    if (!isDirectory) throw new Error(`The output folder is no longer available: ${directory}`);
+    const error = await shell.openPath(directory);
+    if (error) throw new Error(error);
+  }
+  return { opened: uniqueDirectories.size };
+});
+
 ipcMain.handle('get-app-info', () => ({ version: app.getVersion() }));
 
 ipcMain.handle('open-editor', (_event, payload) => {

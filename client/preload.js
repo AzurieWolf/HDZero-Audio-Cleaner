@@ -5,6 +5,7 @@ const validActions = new Set(['minimize', 'maximize', 'close']);
 contextBridge.exposeInMainWorld('hdzero', {
   selectVideos: () => ipcRenderer.invoke('select-videos'),
   selectOutputDirectory: () => ipcRenderer.invoke('select-output-directory'),
+  openOutputDirectory: (payload) => ipcRenderer.invoke('open-output-directory', payload),
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
   openEditor: (payload) => ipcRenderer.invoke('open-editor', payload),
   requestEditorBack: () => ipcRenderer.send('request-editor-back'),

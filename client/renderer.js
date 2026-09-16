@@ -10,7 +10,8 @@ const elements = {
   processLabel: document.getElementById('process-label'), caption: document.getElementById('process-caption'),
   denoise: document.getElementById('denoise-toggle'), attenuation: document.getElementById('attenuation'),
   attenuationValue: document.getElementById('attenuation-value'), attenuationControls: document.getElementById('attenuation-controls'),
-  output: document.getElementById('output-button'), outputRow: document.getElementById('output-row'), outputLabel: document.getElementById('output-label'),
+  output: document.getElementById('output-button'), openOutput: document.getElementById('open-output-button'),
+  outputRow: document.getElementById('output-row'), outputLabel: document.getElementById('output-label'),
   organizationModes: Array.from(document.querySelectorAll('input[name="file-organization"]')),
   openWhenComplete: document.getElementById('open-when-complete'), summary: document.getElementById('summary')
 };
@@ -53,7 +54,6 @@ function updateOutputControl() {
   const disabled = state.processing || organizationMode() !== 'custom';
   elements.output.disabled = disabled;
   elements.outputRow.classList.toggle('disabled', disabled);
-  elements.outputRow.setAttribute('aria-disabled', String(disabled));
   updateOutputLabel();
 }
 
@@ -172,6 +172,22 @@ elements.organizationModes.forEach((input) => input.addEventListener('change', u
 elements.output.addEventListener('click', async () => {
   const selected = await window.hdzero.selectOutputDirectory();
   if (selected) { state.outputDirectory = selected; render(); }
+});
+elements.openOutput.addEventListener('click', async () => {
+  try {
+    const result = await window.hdzero.openOutputDirectory({
+      mode: organizationMode(),
+      outputDirectory: state.outputDirectory,
+      sourcePaths: state.items.map((item) => item.path)
+    });
+    if (!result.opened) {
+      elements.summary.textContent = organizationMode() === 'custom'
+        ? 'Choose a custom output folder before opening it.'
+        : 'Add a video so its output location can be opened.';
+    }
+  } catch (error) {
+    elements.summary.textContent = `Unable to open output folder: ${error.message}`;
+  }
 });
 
 elements.process.addEventListener('click', async () => {

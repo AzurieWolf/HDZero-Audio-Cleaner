@@ -744,8 +744,14 @@ legend {
     margin: 15px 0 11px;
 }
 
-.output-row>div {
+.output-copy {
     min-width: 0;
+}
+
+.output-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
 }
 
 .output-row span {
@@ -755,7 +761,7 @@ legend {
     white-space: nowrap;
 }
 
-.output-row.disabled>div {
+.output-row.disabled>.output-copy {
     opacity: .45;
 }
 
@@ -765,6 +771,18 @@ legend {
     color: #9da6b1;
     background: #1b222b;
     font-size: 9px;
+}
+
+.output-open-button {
+    display: grid;
+    width: 30px;
+    padding: 0;
+    place-items: center;
+}
+
+.output-open-button svg {
+    width: 14px;
+    height: 14px;
 }
 
 .completion-toggle {
