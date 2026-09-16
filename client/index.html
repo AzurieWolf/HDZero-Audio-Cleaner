@@ -94,6 +94,22 @@
     </section>
   </main>
 
+  <div id="output-warning-modal" class="output-warning-modal" role="dialog" aria-modal="true" aria-labelledby="output-warning-title" hidden>
+    <section class="output-warning-dialog">
+      <div class="output-warning-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19zM12 9v5m0 3v.1"/></svg></div>
+      <div class="output-warning-copy">
+        <span>MULTIPLE LOCATIONS</span>
+        <h2 id="output-warning-title">Open output folders?</h2>
+        <p id="output-warning-message"></p>
+      </div>
+      <label class="output-warning-checkbox"><input id="output-warning-never" type="checkbox"><span>Never show this warning again</span></label>
+      <div class="output-warning-actions">
+        <button id="output-warning-cancel" class="warning-cancel" type="button">Cancel</button>
+        <button id="output-warning-confirm" class="primary warning-confirm" type="button">Open locations</button>
+      </div>
+    </section>
+  </div>
+
   <div id="settings-modal" class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
     <section class="settings-dialog">
       <header class="settings-dialog-header"><div><span>APPLICATION</span><h2 id="settings-title">Settings</h2></div><button class="settings-close" type="button" aria-label="Close settings"><svg viewBox="0 0 16 16"><path d="m4 4 8 8m0-8-8 8"/></svg></button></header>

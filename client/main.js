@@ -532,8 +532,13 @@ ipcMain.handle('open-output-directory', async (event, payload) => {
 
   const uniqueDirectories = new Map();
   for (const directory of directories) {
-    const key = process.platform === 'win32' ? directory.toLowerCase() : directory;
-    if (!uniqueDirectories.has(key)) uniqueDirectories.set(key, directory);
+    const resolvedDirectory = path.resolve(directory);
+    const key = process.platform === 'win32' ? resolvedDirectory.toLowerCase() : resolvedDirectory;
+    if (!uniqueDirectories.has(key)) uniqueDirectories.set(key, resolvedDirectory);
+  }
+
+  if (uniqueDirectories.size > 1 && payload?.confirmed !== true) {
+    return { opened: 0, confirmationRequired: true, locationCount: uniqueDirectories.size };
   }
 
   for (const directory of uniqueDirectories.values()) {

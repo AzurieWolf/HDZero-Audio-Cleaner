@@ -1,6 +1,9 @@
 const state = { items: [], outputDirectory: null, processing: false, cancelling: false, nextId: 1 };
 const acceptedExtensions = new Set(['.mp4', '.mkv', '.mov', '.avi', '.webm', '.m4v']);
+const outputWarningPreferenceKey = 'hdzero-suppress-multiple-output-warning';
 let queueScrollFrame = 0;
+let outputWarningResolver = null;
+let outputWarningReturnFocus = null;
 
 const elements = {
   list: document.getElementById('queue-list'), dropZone: document.getElementById('drop-zone'),
@@ -13,7 +16,12 @@ const elements = {
   output: document.getElementById('output-button'), openOutput: document.getElementById('open-output-button'),
   outputRow: document.getElementById('output-row'), outputLabel: document.getElementById('output-label'),
   organizationModes: Array.from(document.querySelectorAll('input[name="file-organization"]')),
-  openWhenComplete: document.getElementById('open-when-complete'), summary: document.getElementById('summary')
+  openWhenComplete: document.getElementById('open-when-complete'), summary: document.getElementById('summary'),
+  outputWarning: document.getElementById('output-warning-modal'),
+  outputWarningMessage: document.getElementById('output-warning-message'),
+  outputWarningNever: document.getElementById('output-warning-never'),
+  outputWarningCancel: document.getElementById('output-warning-cancel'),
+  outputWarningConfirm: document.getElementById('output-warning-confirm')
 };
 
 function fileName(filePath) { return filePath.split(/[\\/]/).pop(); }
@@ -51,9 +59,12 @@ function updateOutputLabel() {
 }
 
 function updateOutputControl() {
-  const disabled = state.processing || organizationMode() !== 'custom';
-  elements.output.disabled = disabled;
-  elements.outputRow.classList.toggle('disabled', disabled);
+  const mode = organizationMode();
+  const changeDisabled = state.processing || mode !== 'custom';
+  const openDisabled = mode === 'custom' ? !state.outputDirectory : state.items.length === 0;
+  elements.output.disabled = changeDisabled;
+  elements.openOutput.disabled = openDisabled;
+  elements.outputRow.classList.toggle('disabled', changeDisabled);
   updateOutputLabel();
 }
 
@@ -66,6 +77,46 @@ function updateOrganizationDescription() {
   };
   elements.summary.textContent = descriptions[organizationMode()];
   render();
+}
+
+function isOutputWarningSuppressed() {
+  try { return localStorage.getItem(outputWarningPreferenceKey) === 'true'; } catch { return false; }
+}
+
+function showOutputWarning(locationCount) {
+  elements.outputWarningMessage.textContent = `${locationCount} unique output locations were found. Each video's location will open in File Explorer, while shared locations will open only once.`;
+  elements.outputWarningNever.checked = false;
+  elements.outputWarning.classList.remove('closing');
+  elements.outputWarning.hidden = false;
+  outputWarningReturnFocus = document.activeElement;
+  requestAnimationFrame(() => elements.outputWarningConfirm.focus());
+  return new Promise((resolve) => { outputWarningResolver = resolve; });
+}
+
+function closeOutputWarning(confirmed) {
+  if (!outputWarningResolver) return;
+  if (confirmed && elements.outputWarningNever.checked) {
+    try { localStorage.setItem(outputWarningPreferenceKey, 'true'); } catch {}
+  }
+
+  const resolve = outputWarningResolver;
+  const returnFocus = outputWarningReturnFocus;
+  outputWarningResolver = null;
+  outputWarningReturnFocus = null;
+  elements.outputWarning.classList.add('closing');
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    elements.outputWarning.removeEventListener('animationend', onAnimationEnd);
+    elements.outputWarning.hidden = true;
+    elements.outputWarning.classList.remove('closing');
+    if (returnFocus?.isConnected) returnFocus.focus();
+    resolve(confirmed);
+  };
+  const onAnimationEnd = (event) => { if (event.target === elements.outputWarning) finish(); };
+  elements.outputWarning.addEventListener('animationend', onAnimationEnd);
+  setTimeout(finish, 250);
 }
 
 function addPaths(paths) {
@@ -173,14 +224,29 @@ elements.output.addEventListener('click', async () => {
   const selected = await window.hdzero.selectOutputDirectory();
   if (selected) { state.outputDirectory = selected; render(); }
 });
+elements.outputWarningCancel.addEventListener('click', () => closeOutputWarning(false));
+elements.outputWarningConfirm.addEventListener('click', () => closeOutputWarning(true));
+elements.outputWarning.addEventListener('click', (event) => {
+  if (event.target === elements.outputWarning) closeOutputWarning(false);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !elements.outputWarning.hidden) closeOutputWarning(false);
+});
 elements.openOutput.addEventListener('click', async () => {
   try {
-    const result = await window.hdzero.openOutputDirectory({
+    const request = {
       mode: organizationMode(),
       outputDirectory: state.outputDirectory,
-      sourcePaths: state.items.map((item) => item.path)
-    });
-    if (!result.opened) {
+      sourcePaths: state.items.map((item) => item.path),
+      confirmed: isOutputWarningSuppressed()
+    };
+    let result = await window.hdzero.openOutputDirectory(request);
+    if (result.confirmationRequired) {
+      const confirmed = await showOutputWarning(result.locationCount);
+      if (!confirmed) return;
+      result = await window.hdzero.openOutputDirectory({ ...request, confirmed: true });
+    }
+    if (!result.opened && !result.cancelled) {
       elements.summary.textContent = organizationMode() === 'custom'
         ? 'Choose a custom output folder before opening it.'
         : 'Add a video so its output location can be opened.';
