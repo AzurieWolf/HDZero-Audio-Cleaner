@@ -56,10 +56,13 @@
           <label class="choice"><input type="radio" name="editor-channel" value="both"><span class="radio-dot"></span><span><strong>Keep both channels</strong><small>Listen to the original stereo track</small></span><b class="live-badge">LIVE</b></label>
         </fieldset>
 
-        <div class="denoise-card">
-          <label class="toggle-row"><span><strong>AI noise reduction</strong><small>DeepFilterNet 3</small></span><span class="switch"><input id="editor-denoise" type="checkbox"><span></span></span></label>
-          <div id="editor-attenuation-controls" class="attenuation disabled"><div><label for="editor-attenuation">Maximum attenuation</label><output id="editor-attenuation-value">30 dB</output></div><input id="editor-attenuation" type="range" min="1" max="60" value="30"><div class="range-labels"><span>Natural</span><span>Aggressive</span></div></div>
-        </div>
+        <fieldset class="denoise-setting">
+          <legend>Noise reduction</legend>
+          <div class="denoise-card">
+            <label class="toggle-row"><span><strong>AI noise reduction</strong><small>DeepFilterNet 3</small></span><span class="switch"><input id="editor-denoise" type="checkbox"><span></span></span></label>
+            <div id="editor-attenuation-controls" class="attenuation disabled"><div><label for="editor-attenuation">Maximum attenuation</label><output id="editor-attenuation-value">30 dB</output></div><input id="editor-attenuation" type="range" min="1" max="60" value="30"><div class="range-labels"><span>Natural</span><span>Aggressive</span></div></div>
+          </div>
+        </fieldset>
 
         <button id="generate-preview" class="primary generate" type="button" disabled><span>Generate denoised preview</span><small>Enable AI noise reduction to process A–B</small></button>
         <div class="settings-actions">

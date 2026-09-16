@@ -59,14 +59,17 @@
           <label class="choice"><input type="radio" name="channel" value="both"><span class="radio-dot"></span><span><strong>Keep both channels</strong><small>Only apply optional denoising</small></span></label>
         </fieldset>
 
-        <div class="denoise-card">
-          <label class="toggle-row"><span><strong>AI noise reduction</strong><small>DeepFilterNet 3</small></span><span class="switch"><input id="denoise-toggle" type="checkbox"><span></span></span></label>
-          <div id="attenuation-controls" class="attenuation disabled">
-            <div><label for="attenuation">Maximum attenuation</label><output id="attenuation-value">30 dB</output></div>
-            <input id="attenuation" type="range" min="1" max="60" value="30">
-            <div class="range-labels"><span>Natural</span><span>Aggressive</span></div>
+        <fieldset class="denoise-setting">
+          <legend>Noise reduction</legend>
+          <div class="denoise-card">
+            <label class="toggle-row"><span><strong>AI noise reduction</strong><small>DeepFilterNet 3</small></span><span class="switch"><input id="denoise-toggle" type="checkbox"><span></span></span></label>
+            <div id="attenuation-controls" class="attenuation disabled">
+              <div><label for="attenuation">Maximum attenuation</label><output id="attenuation-value">30 dB</output></div>
+              <input id="attenuation" type="range" min="1" max="60" value="30">
+              <div class="range-labels"><span>Natural</span><span>Aggressive</span></div>
+            </div>
           </div>
-        </div>
+        </fieldset>
 
         <fieldset class="organization-setting">
           <legend>File organization</legend>

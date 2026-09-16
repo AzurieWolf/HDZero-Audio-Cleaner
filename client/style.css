@@ -627,6 +627,10 @@ legend {
     background: #10151c;
 }
 
+.denoise-setting {
+    margin-bottom: 0;
+}
+
 .toggle-row,
 .output-row {
     display: flex;
