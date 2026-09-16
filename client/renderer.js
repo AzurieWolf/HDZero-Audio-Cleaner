@@ -1,9 +1,11 @@
 const state = { items: [], outputDirectory: null, processing: false, cancelling: false, nextId: 1 };
 const acceptedExtensions = new Set(['.mp4', '.mkv', '.mov', '.avi', '.webm', '.m4v']);
 const outputWarningPreferenceKey = 'hdzero-suppress-multiple-output-warning';
+const customOutputWarningPreferenceKey = 'hdzero-suppress-custom-output-warning';
 let queueScrollFrame = 0;
 let outputWarningResolver = null;
 let outputWarningReturnFocus = null;
+let activeOutputWarningPreferenceKey = null;
 
 const elements = {
   list: document.getElementById('queue-list'), dropZone: document.getElementById('drop-zone'),
@@ -18,6 +20,8 @@ const elements = {
   organizationModes: Array.from(document.querySelectorAll('input[name="file-organization"]')),
   openWhenComplete: document.getElementById('open-when-complete'), summary: document.getElementById('summary'),
   outputWarning: document.getElementById('output-warning-modal'),
+  outputWarningEyebrow: document.getElementById('output-warning-eyebrow'),
+  outputWarningTitle: document.getElementById('output-warning-title'),
   outputWarningMessage: document.getElementById('output-warning-message'),
   outputWarningNever: document.getElementById('output-warning-never'),
   outputWarningCancel: document.getElementById('output-warning-cancel'),
@@ -26,6 +30,13 @@ const elements = {
 
 function fileName(filePath) { return filePath.split(/[\\/]/).pop(); }
 function extension(filePath) { const name = fileName(filePath); return name.includes('.') ? `.${name.split('.').pop().toLowerCase()}` : ''; }
+function directoryName(filePath) {
+  const separator = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+  return separator >= 0 ? filePath.slice(0, separator).replace(/[\\/]+$/, '') : '';
+}
+function uniqueSourceDirectoryCount() {
+  return new Set(state.items.map((item) => directoryName(item.path).toLowerCase()).filter(Boolean)).size;
+}
 function escapeHtml(value) { const node = document.createElement('span'); node.textContent = value; return node.innerHTML; }
 function organizationMode() { return document.querySelector('input[name="file-organization"]:checked').value; }
 function globalTreatmentSettings() {
@@ -79,15 +90,19 @@ function updateOrganizationDescription() {
   render();
 }
 
-function isOutputWarningSuppressed() {
-  try { return localStorage.getItem(outputWarningPreferenceKey) === 'true'; } catch { return false; }
+function isOutputWarningSuppressed(preferenceKey) {
+  try { return localStorage.getItem(preferenceKey) === 'true'; } catch { return false; }
 }
 
-function showOutputWarning(locationCount) {
-  elements.outputWarningMessage.textContent = `${locationCount} unique output locations were found. Each video's location will open in File Explorer, while shared locations will open only once.`;
+function showOutputWarning({ eyebrow, title, message, confirmLabel, preferenceKey }) {
+  elements.outputWarningEyebrow.textContent = eyebrow;
+  elements.outputWarningTitle.textContent = title;
+  elements.outputWarningMessage.textContent = message;
+  elements.outputWarningConfirm.textContent = confirmLabel;
   elements.outputWarningNever.checked = false;
   elements.outputWarning.classList.remove('closing');
   elements.outputWarning.hidden = false;
+  activeOutputWarningPreferenceKey = preferenceKey;
   outputWarningReturnFocus = document.activeElement;
   requestAnimationFrame(() => elements.outputWarningConfirm.focus());
   return new Promise((resolve) => { outputWarningResolver = resolve; });
@@ -95,14 +110,15 @@ function showOutputWarning(locationCount) {
 
 function closeOutputWarning(confirmed) {
   if (!outputWarningResolver) return;
-  if (confirmed && elements.outputWarningNever.checked) {
-    try { localStorage.setItem(outputWarningPreferenceKey, 'true'); } catch {}
+  if (confirmed && elements.outputWarningNever.checked && activeOutputWarningPreferenceKey) {
+    try { localStorage.setItem(activeOutputWarningPreferenceKey, 'true'); } catch {}
   }
 
   const resolve = outputWarningResolver;
   const returnFocus = outputWarningReturnFocus;
   outputWarningResolver = null;
   outputWarningReturnFocus = null;
+  activeOutputWarningPreferenceKey = null;
   elements.outputWarning.classList.add('closing');
   let finished = false;
   const finish = () => {
@@ -221,6 +237,17 @@ elements.denoise.addEventListener('change', () => elements.attenuationControls.c
 elements.attenuation.addEventListener('input', () => { elements.attenuationValue.value = `${elements.attenuation.value} dB`; });
 elements.organizationModes.forEach((input) => input.addEventListener('change', updateOrganizationDescription));
 elements.output.addEventListener('click', async () => {
+  const sourceLocationCount = uniqueSourceDirectoryCount();
+  if (sourceLocationCount > 1 && !isOutputWarningSuppressed(customOutputWarningPreferenceKey)) {
+    const confirmed = await showOutputWarning({
+      eyebrow: 'MULTIPLE SOURCE LOCATIONS',
+      title: 'Use one custom output folder?',
+      message: `${sourceLocationCount} source locations were found. All processed videos in the queue will be placed in the single output folder you select.`,
+      confirmLabel: 'Choose location',
+      preferenceKey: customOutputWarningPreferenceKey
+    });
+    if (!confirmed) return;
+  }
   const selected = await window.hdzero.selectOutputDirectory();
   if (selected) { state.outputDirectory = selected; render(); }
 });
@@ -238,11 +265,17 @@ elements.openOutput.addEventListener('click', async () => {
       mode: organizationMode(),
       outputDirectory: state.outputDirectory,
       sourcePaths: state.items.map((item) => item.path),
-      confirmed: isOutputWarningSuppressed()
+      confirmed: isOutputWarningSuppressed(outputWarningPreferenceKey)
     };
     let result = await window.hdzero.openOutputDirectory(request);
     if (result.confirmationRequired) {
-      const confirmed = await showOutputWarning(result.locationCount);
+      const confirmed = await showOutputWarning({
+        eyebrow: 'MULTIPLE LOCATIONS',
+        title: 'Open output folders?',
+        message: `${result.locationCount} unique output locations were found. Each video's location will open in File Explorer, while shared locations will open only once.`,
+        confirmLabel: 'Open locations',
+        preferenceKey: outputWarningPreferenceKey
+      });
       if (!confirmed) return;
       result = await window.hdzero.openOutputDirectory({ ...request, confirmed: true });
     }
