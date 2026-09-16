@@ -74,9 +74,10 @@
             <label><input type="radio" name="file-organization" value="together" checked><span><strong>Together</strong><small>Side by side</small></span></label>
             <label><input type="radio" name="file-organization" value="originals"><span><strong>Original</strong><small>Move source</small></span></label>
             <label><input type="radio" name="file-organization" value="fixed"><span><strong>Fixed Videos</strong><small>Move result</small></span></label>
+            <label><input type="radio" name="file-organization" value="custom"><span><strong>Custom</strong><small>Choose folder</small></span></label>
           </div>
         </fieldset>
-        <div class="output-row"><div><strong>Output location</strong><span id="output-label">Next to each source</span></div><button id="output-button" class="icon-button" type="button" title="Choose output folder">Change</button></div>
+        <div id="output-row" class="output-row disabled" aria-disabled="true"><div><strong>Output location</strong><span id="output-label">Next to each source</span></div><button id="output-button" class="icon-button" type="button" title="Choose output folder" disabled>Change</button></div>
         <label class="completion-toggle"><span><strong>Open file location when complete</strong><small>Each output folder opens only once</small></span><span class="switch"><input id="open-when-complete" type="checkbox"><span></span></span></label>
         <div class="action-row"><button id="process-button" class="primary process" type="button" disabled><span id="process-label">Start</span><small id="process-caption">Add videos to begin</small></button></div>
         <p id="summary" class="summary">Original and processed videos stay side by side.</p>

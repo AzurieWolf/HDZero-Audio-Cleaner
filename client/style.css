@@ -751,6 +751,10 @@ legend {
     white-space: nowrap;
 }
 
+.output-row.disabled>div {
+    opacity: .45;
+}
+
 .icon-button {
     padding: 7px 9px;
     border: 1px solid #313945;
@@ -852,7 +856,7 @@ legend {
 
 .organization-switch {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     overflow: hidden;
     border: 1px solid #303945;
     border-radius: 9px;

@@ -14,6 +14,8 @@ test('maps each organization mode to one mutually exclusive layout', () => {
   assert.equal(movesOriginal('originals'), true);
   assert.equal(outputDirectoryFor(directory, 'fixed'), path.join(directory, 'Fixed Videos'));
   assert.equal(movesOriginal('fixed'), false);
+  assert.equal(outputDirectoryFor(directory, 'custom'), directory);
+  assert.equal(movesOriginal('custom'), false);
 });
 
 test('moves a source video into a sibling Original folder', async (context) => {

@@ -9,7 +9,7 @@ const elements = {
   processLabel: document.getElementById('process-label'), caption: document.getElementById('process-caption'),
   denoise: document.getElementById('denoise-toggle'), attenuation: document.getElementById('attenuation'),
   attenuationValue: document.getElementById('attenuation-value'), attenuationControls: document.getElementById('attenuation-controls'),
-  output: document.getElementById('output-button'), outputLabel: document.getElementById('output-label'),
+  output: document.getElementById('output-button'), outputRow: document.getElementById('output-row'), outputLabel: document.getElementById('output-label'),
   organizationModes: Array.from(document.querySelectorAll('input[name="file-organization"]')),
   openWhenComplete: document.getElementById('open-when-complete'), summary: document.getElementById('summary')
 };
@@ -37,25 +37,34 @@ function applyGlobalTreatmentSettings(settings) {
 }
 
 function updateOutputLabel() {
-  const useFixedFolder = organizationMode() === 'fixed';
-  if (state.outputDirectory) {
-    const base = state.outputDirectory.replace(/[\\/]$/, '');
-    elements.outputLabel.textContent = useFixedFolder ? `${base}\\Fixed Videos` : base;
-    elements.outputLabel.title = elements.outputLabel.textContent;
-    return;
+  const mode = organizationMode();
+  if (mode === 'custom') {
+    elements.outputLabel.textContent = state.outputDirectory || 'Choose an output folder';
+  } else if (mode === 'fixed') {
+    elements.outputLabel.textContent = 'Each source / Fixed Videos';
+  } else {
+    elements.outputLabel.textContent = 'Next to each source';
   }
-  elements.outputLabel.textContent = useFixedFolder ? 'Each source / Fixed Videos' : 'Next to each source';
   elements.outputLabel.title = elements.outputLabel.textContent;
+}
+
+function updateOutputControl() {
+  const disabled = state.processing || organizationMode() !== 'custom';
+  elements.output.disabled = disabled;
+  elements.outputRow.classList.toggle('disabled', disabled);
+  elements.outputRow.setAttribute('aria-disabled', String(disabled));
+  updateOutputLabel();
 }
 
 function updateOrganizationDescription() {
   const descriptions = {
     together: 'Original and processed videos stay side by side.',
     originals: 'Completed originals move into an Original folder.',
-    fixed: 'Processed videos are placed in a Fixed Videos folder.'
+    fixed: 'Processed videos are placed in a Fixed Videos folder.',
+    custom: 'Processed videos use your selected output location.'
   };
   elements.summary.textContent = descriptions[organizationMode()];
-  updateOutputLabel();
+  render();
 }
 
 function addPaths(paths) {
@@ -75,15 +84,16 @@ function render() {
   elements.count.textContent = `${state.items.length} ${state.items.length === 1 ? 'file' : 'files'}`;
   elements.clear.disabled = state.processing || state.items.length === 0;
   elements.add.disabled = state.processing;
-  elements.output.disabled = state.processing;
+  updateOutputControl();
   elements.organizationModes.forEach((input) => { input.disabled = state.processing; });
   elements.openWhenComplete.disabled = state.processing;
-  elements.process.disabled = state.items.length === 0 || state.cancelling;
+  const customOutputMissing = organizationMode() === 'custom' && !state.outputDirectory;
+  elements.process.disabled = state.items.length === 0 || state.cancelling || customOutputMissing;
   elements.process.classList.toggle('stop', state.processing);
   elements.processLabel.textContent = state.processing ? 'Stop' : 'Start';
   elements.caption.textContent = state.processing
     ? (state.cancelling ? 'Cancelling current video…' : 'Cancel processing')
-    : (state.items.length ? `${state.items.length} ${state.items.length === 1 ? 'video' : 'videos'} · sequential` : 'Add videos to begin');
+    : (customOutputMissing ? 'Choose an output folder to begin' : (state.items.length ? `${state.items.length} ${state.items.length === 1 ? 'video' : 'videos'} · sequential` : 'Add videos to begin'));
   elements.list.innerHTML = state.items.map((item, index) => `
     <article class="queue-item ${item.status}" data-id="${item.id}">
       <span class="file-index">${String(index + 1).padStart(2, '0')}</span>
@@ -132,7 +142,7 @@ elements.attenuation.addEventListener('input', () => { elements.attenuationValue
 elements.organizationModes.forEach((input) => input.addEventListener('change', updateOrganizationDescription));
 elements.output.addEventListener('click', async () => {
   const selected = await window.hdzero.selectOutputDirectory();
-  if (selected) { state.outputDirectory = selected; updateOutputLabel(); }
+  if (selected) { state.outputDirectory = selected; render(); }
 });
 
 elements.process.addEventListener('click', async () => {
@@ -156,7 +166,7 @@ elements.process.addEventListener('click', async () => {
       channel: document.querySelector('input[name="channel"]:checked').value,
       denoise: elements.denoise.checked,
       attenuation: elements.denoise.checked ? Number(elements.attenuation.value) : null,
-      outputDirectory: state.outputDirectory,
+      outputDirectory: organizationMode() === 'custom' ? state.outputDirectory : null,
       fileOrganization: organizationMode(),
       openWhenComplete: elements.openWhenComplete.checked
     }
