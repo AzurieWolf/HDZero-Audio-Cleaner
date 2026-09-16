@@ -313,8 +313,7 @@ main {
 
 .primary,
 .text-button,
-.icon-button,
-.cancel-button {
+.icon-button {
     border: 0;
     border-radius: 8px;
 }
@@ -807,17 +806,15 @@ legend {
     gap: 8px;
 }
 
-.cancel-button {
-    padding: 0 13px;
-    border: 1px solid #61313d;
-    color: #f18597;
-    background: #23151a;
-    font-size: 10px;
-}
-
 .process {
     flex: 1;
     padding: 10px;
+}
+
+.process.stop {
+    color: #fff;
+    background: linear-gradient(135deg, #f06a7f, var(--danger));
+    box-shadow: 0 7px 25px rgba(232, 85, 109, .18);
 }
 
 .process span,

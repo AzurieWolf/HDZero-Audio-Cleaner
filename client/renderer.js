@@ -1,4 +1,4 @@
-const state = { items: [], outputDirectory: null, processing: false, nextId: 1 };
+const state = { items: [], outputDirectory: null, processing: false, cancelling: false, nextId: 1 };
 const acceptedExtensions = new Set(['.mp4', '.mkv', '.mov', '.avi', '.webm', '.m4v']);
 
 const elements = {
@@ -6,7 +6,7 @@ const elements = {
   dropTitle: document.getElementById('drop-title'), dropSubtitle: document.getElementById('drop-subtitle'),
   count: document.getElementById('queue-count'), add: document.getElementById('add-button'),
   clear: document.getElementById('clear-button'), process: document.getElementById('process-button'),
-  caption: document.getElementById('process-caption'), cancel: document.getElementById('cancel-button'),
+  processLabel: document.getElementById('process-label'), caption: document.getElementById('process-caption'),
   denoise: document.getElementById('denoise-toggle'), attenuation: document.getElementById('attenuation'),
   attenuationValue: document.getElementById('attenuation-value'), attenuationControls: document.getElementById('attenuation-controls'),
   output: document.getElementById('output-button'), outputLabel: document.getElementById('output-label'),
@@ -78,9 +78,12 @@ function render() {
   elements.output.disabled = state.processing;
   elements.organizationModes.forEach((input) => { input.disabled = state.processing; });
   elements.openWhenComplete.disabled = state.processing;
-  elements.process.disabled = state.processing || state.items.length === 0;
-  elements.cancel.hidden = !state.processing;
-  elements.caption.textContent = state.items.length ? `${state.items.length} ${state.items.length === 1 ? 'video' : 'videos'} · sequential` : 'Add videos to begin';
+  elements.process.disabled = state.items.length === 0 || state.cancelling;
+  elements.process.classList.toggle('stop', state.processing);
+  elements.processLabel.textContent = state.processing ? 'Stop' : 'Start';
+  elements.caption.textContent = state.processing
+    ? (state.cancelling ? 'Cancelling current video…' : 'Cancel processing')
+    : (state.items.length ? `${state.items.length} ${state.items.length === 1 ? 'video' : 'videos'} · sequential` : 'Add videos to begin');
   elements.list.innerHTML = state.items.map((item, index) => `
     <article class="queue-item ${item.status}" data-id="${item.id}">
       <span class="file-index">${String(index + 1).padStart(2, '0')}</span>
@@ -133,8 +136,17 @@ elements.output.addEventListener('click', async () => {
 });
 
 elements.process.addEventListener('click', async () => {
-  if (!state.items.length || state.processing) return;
+  if (state.processing) {
+    if (state.cancelling) return;
+    state.cancelling = true;
+    elements.summary.textContent = 'Stopping the current video and cancelling the remaining queue…';
+    render();
+    window.hdzero.cancel();
+    return;
+  }
+  if (!state.items.length) return;
   state.processing = true;
+  state.cancelling = false;
   state.items.forEach((item) => { item.status = 'queued'; item.progress = 0; item.detail = 'Waiting'; });
   elements.summary.textContent = 'Processing the queue. You can leave this window open in the background.';
   render();
@@ -150,10 +162,13 @@ elements.process.addEventListener('click', async () => {
     }
   };
   try { await window.hdzero.processQueue(payload); }
-  catch (error) { elements.summary.textContent = `Could not start: ${error.message}`; state.processing = false; render(); }
+  catch (error) {
+    elements.summary.textContent = `Could not start: ${error.message}`;
+    state.processing = false;
+    state.cancelling = false;
+    render();
+  }
 });
-
-elements.cancel.addEventListener('click', () => { elements.cancel.disabled = true; elements.cancel.textContent = 'Cancelling…'; window.hdzero.cancel(); });
 
 window.hdzero.onProgress((update) => {
   const item = state.items.find((candidate) => candidate.id === update.id);
@@ -165,8 +180,7 @@ window.hdzero.onProgress((update) => {
 
 window.hdzero.onFinished(({ results, cancelled }) => {
   state.processing = false;
-  elements.cancel.disabled = false;
-  elements.cancel.textContent = 'Cancel';
+  state.cancelling = false;
   const completed = results.filter((result) => result.ok).length;
   const failed = results.filter((result) => !result.ok && !result.cancelled).length;
   for (const result of results) {
