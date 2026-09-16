@@ -7,7 +7,9 @@ const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell } = require(
 const { moveOriginalVideo, movesOriginal, outputDirectoryFor } = require('./file-organization');
 
 const developerMode = process.argv.includes('--developer-mode');
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
 let mainWindow;
+let pendingSecondInstanceFocus = false;
 let editorView = null;
 let editorViewReady = null;
 let editorOpening = false;
@@ -74,6 +76,18 @@ function sendWindowState(window) {
   }
 }
 
+function focusExistingWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    pendingSecondInstanceFocus = true;
+    return;
+  }
+  pendingSecondInstanceFocus = false;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  if (!mainWindow.isVisible()) mainWindow.show();
+  mainWindow.focus();
+  mainWindow.moveTop();
+}
+
 function layoutEditorView() {
   if (!mainWindow || mainWindow.isDestroyed() || !editorView || editorView.webContents.isDestroyed()) return;
   const [width, height] = mainWindow.getContentSize();
@@ -132,7 +146,10 @@ function createWindow() {
     }
   });
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    if (pendingSecondInstanceFocus) focusExistingWindow();
+  });
   mainWindow.webContents.on('did-finish-load', () => {
     sendWindowState(mainWindow);
     prepareEditorView();
@@ -720,11 +737,16 @@ ipcMain.on('window-control', (event, action) => {
   if (action === 'close') window.close();
 });
 
-app.whenReady().then(() => {
-  loadPreferences();
-  createWindow();
-  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
-});
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', focusExistingWindow);
+  app.whenReady().then(() => {
+    loadPreferences();
+    createWindow();
+    app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+  });
+}
 
 app.on('before-quit', () => {
   cancelRequested = true;
