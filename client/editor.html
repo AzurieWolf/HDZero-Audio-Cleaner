@@ -12,13 +12,15 @@
 <body>
   <div id="editor-surface" class="editor-surface">
   <main>
-    <section class="editor-heading">
-      <div><span class="eyebrow">EDIT &amp; PREVIEW</span><h1 id="video-name">Loading video…</h1><p id="video-path"></p></div>
-      <span id="custom-state" class="custom-state">Using global settings</span>
-    </section>
-
     <section class="editor-grid">
       <div class="preview-panel panel">
+        <div class="editor-heading">
+          <div>
+            <h1 id="video-name">Loading video…</h1>
+            <p id="video-path"></p>
+          </div>
+          <span id="custom-state" class="custom-state">Using global settings</span>
+        </div>
         <div class="viewer">
           <video id="player" controls preload="metadata"></video>
           <div id="video-loading" class="video-loading"><i aria-hidden="true"></i><strong>Loading video</strong><small>Preparing playback...</small></div>

@@ -197,7 +197,7 @@ main {
     position: fixed;
     inset: 48px 0 0;
     overflow: auto;
-    padding: 34px clamp(24px, 4vw, 54px) 42px;
+    padding: 24px clamp(24px, 4vw, 24px) 24px;
 }
 
 .hero {
