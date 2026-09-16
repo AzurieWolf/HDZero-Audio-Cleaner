@@ -10,13 +10,14 @@ const elements = {
   denoise: document.getElementById('denoise-toggle'), attenuation: document.getElementById('attenuation'),
   attenuationValue: document.getElementById('attenuation-value'), attenuationControls: document.getElementById('attenuation-controls'),
   output: document.getElementById('output-button'), outputLabel: document.getElementById('output-label'),
-  moveOriginals: document.getElementById('move-originals'), organizeOutputs: document.getElementById('organize-outputs'),
+  organizationModes: Array.from(document.querySelectorAll('input[name="file-organization"]')),
   openWhenComplete: document.getElementById('open-when-complete'), summary: document.getElementById('summary')
 };
 
 function fileName(filePath) { return filePath.split(/[\\/]/).pop(); }
 function extension(filePath) { const name = fileName(filePath); return name.includes('.') ? `.${name.split('.').pop().toLowerCase()}` : ''; }
 function escapeHtml(value) { const node = document.createElement('span'); node.textContent = value; return node.innerHTML; }
+function organizationMode() { return document.querySelector('input[name="file-organization"]:checked').value; }
 function globalTreatmentSettings() {
   return {
     channel: document.querySelector('input[name="channel"]:checked').value,
@@ -36,14 +37,25 @@ function applyGlobalTreatmentSettings(settings) {
 }
 
 function updateOutputLabel() {
+  const useFixedFolder = organizationMode() === 'fixed';
   if (state.outputDirectory) {
     const base = state.outputDirectory.replace(/[\\/]$/, '');
-    elements.outputLabel.textContent = elements.organizeOutputs.checked ? `${base}\\Fixed Videos` : base;
+    elements.outputLabel.textContent = useFixedFolder ? `${base}\\Fixed Videos` : base;
     elements.outputLabel.title = elements.outputLabel.textContent;
     return;
   }
-  elements.outputLabel.textContent = elements.organizeOutputs.checked ? 'Each source / Fixed Videos' : 'Next to each source';
+  elements.outputLabel.textContent = useFixedFolder ? 'Each source / Fixed Videos' : 'Next to each source';
   elements.outputLabel.title = elements.outputLabel.textContent;
+}
+
+function updateOrganizationDescription() {
+  const descriptions = {
+    together: 'Original and processed videos stay side by side.',
+    originals: 'Completed originals move into an Original folder.',
+    fixed: 'Processed videos are placed in a Fixed Videos folder.'
+  };
+  elements.summary.textContent = descriptions[organizationMode()];
+  updateOutputLabel();
 }
 
 function addPaths(paths) {
@@ -64,8 +76,7 @@ function render() {
   elements.clear.disabled = state.processing || state.items.length === 0;
   elements.add.disabled = state.processing;
   elements.output.disabled = state.processing;
-  elements.moveOriginals.disabled = state.processing;
-  elements.organizeOutputs.disabled = state.processing;
+  elements.organizationModes.forEach((input) => { input.disabled = state.processing; });
   elements.openWhenComplete.disabled = state.processing;
   elements.process.disabled = state.processing || state.items.length === 0;
   elements.cancel.hidden = !state.processing;
@@ -115,12 +126,7 @@ document.querySelectorAll('input[name="channel"]').forEach((input) => input.addE
 
 elements.denoise.addEventListener('change', () => elements.attenuationControls.classList.toggle('disabled', !elements.denoise.checked));
 elements.attenuation.addEventListener('input', () => { elements.attenuationValue.value = `${elements.attenuation.value} dB`; });
-elements.moveOriginals.addEventListener('change', () => {
-  elements.summary.textContent = elements.moveOriginals.checked
-    ? 'Completed originals move into an Original folder.'
-    : 'Original videos remain in their current locations.';
-});
-elements.organizeOutputs.addEventListener('change', updateOutputLabel);
+elements.organizationModes.forEach((input) => input.addEventListener('change', updateOrganizationDescription));
 elements.output.addEventListener('click', async () => {
   const selected = await window.hdzero.selectOutputDirectory();
   if (selected) { state.outputDirectory = selected; updateOutputLabel(); }
@@ -139,8 +145,7 @@ elements.process.addEventListener('click', async () => {
       denoise: elements.denoise.checked,
       attenuation: elements.denoise.checked ? Number(elements.attenuation.value) : null,
       outputDirectory: state.outputDirectory,
-      moveOriginals: elements.moveOriginals.checked,
-      organizeOutputs: elements.organizeOutputs.checked,
+      fileOrganization: organizationMode(),
       openWhenComplete: elements.openWhenComplete.checked
     }
   };

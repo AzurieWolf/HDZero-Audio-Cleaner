@@ -3,7 +3,18 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { moveOriginalVideo } = require('../file-organization');
+const { moveOriginalVideo, movesOriginal, outputDirectoryFor } = require('../file-organization');
+
+test('maps each organization mode to one mutually exclusive layout', () => {
+  const directory = path.join('recordings', 'session');
+
+  assert.equal(outputDirectoryFor(directory, 'together'), directory);
+  assert.equal(movesOriginal('together'), false);
+  assert.equal(outputDirectoryFor(directory, 'originals'), directory);
+  assert.equal(movesOriginal('originals'), true);
+  assert.equal(outputDirectoryFor(directory, 'fixed'), path.join(directory, 'Fixed Videos'));
+  assert.equal(movesOriginal('fixed'), false);
+});
 
 test('moves a source video into a sibling Original folder', async (context) => {
   const directory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'hdzero-original-test-'));

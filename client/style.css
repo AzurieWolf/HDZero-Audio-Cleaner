@@ -836,15 +836,98 @@ legend {
     text-align: center;
 }
 
-.original-folder-toggle {
-    margin-top: 15px;
+.organization-setting {
+    margin: 15px 0 13px;
 }
 
-.output-folder-toggle {
-    margin-top: 0;
+.organization-setting legend {
+    margin-bottom: 8px;
 }
 
-.output-folder-toggle+.output-row {
+.organization-switch {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    overflow: hidden;
+    border: 1px solid #303945;
+    border-radius: 9px;
+    background: #0c1016;
+}
+
+.organization-switch label {
+    position: relative;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.organization-switch label+label {
+    border-left: 1px solid #303945;
+}
+
+.organization-switch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.organization-switch span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    padding: 7px 4px;
+    color: #737e8a;
+    text-align: center;
+    transition: color .16s, background .16s, box-shadow .16s;
+}
+
+.organization-switch strong,
+.organization-switch small {
+    display: block;
+}
+
+.organization-switch strong {
+    font-size: 8px;
+    white-space: nowrap;
+}
+
+.organization-switch small {
+    margin-top: 3px;
+    color: #535e69;
+    font-size: 7px;
+}
+
+.organization-switch label:hover span {
+    color: #b8c1c9;
+    background: #171e27;
+}
+
+.organization-switch label:has(input:checked) span {
+    color: var(--cyan-bright);
+    background: var(--theme-surface);
+    box-shadow: inset 0 -2px var(--cyan);
+}
+
+.organization-switch label:has(input:checked) small {
+    color: var(--cyan);
+}
+
+.organization-switch label:has(input:focus-visible) {
+    z-index: 1;
+    outline: 2px solid var(--cyan);
+    outline-offset: -2px;
+}
+
+.organization-switch label:has(input:disabled) {
+    cursor: not-allowed;
+    opacity: .45;
+}
+
+.organization-switch label:has(input:disabled) span {
+    pointer-events: none;
+}
+
+.organization-setting+.output-row {
     margin-top: 0;
 }
 

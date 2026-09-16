@@ -1,6 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
+function outputDirectoryFor(baseDirectory, mode) {
+  return mode === 'fixed' ? path.join(baseDirectory, 'Fixed Videos') : baseDirectory;
+}
+
+function movesOriginal(mode) {
+  return mode === 'originals';
+}
+
 function uniquePathIn(directory, parsed) {
   let candidate = path.join(directory, `${parsed.name}${parsed.ext}`);
   let index = 2;
@@ -22,4 +30,4 @@ async function moveOriginalVideo(input) {
   return destination;
 }
 
-module.exports = { moveOriginalVideo };
+module.exports = { moveOriginalVideo, movesOriginal, outputDirectoryFor };

@@ -4,7 +4,7 @@ const os = require('os');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell } = require('electron');
-const { moveOriginalVideo } = require('./file-organization');
+const { moveOriginalVideo, movesOriginal, outputDirectoryFor } = require('./file-organization');
 
 let mainWindow;
 let editorView = null;
@@ -297,7 +297,7 @@ function outputSuffix(settings) {
 function outputPathFor(input, outputDirectory, settings) {
   const parsed = path.parse(input);
   const baseDirectory = outputDirectory || parsed.dir;
-  const directory = settings.organizeOutputs ? path.join(baseDirectory, 'Fixed Videos') : baseDirectory;
+  const directory = outputDirectoryFor(baseDirectory, settings.fileOrganization);
   const suffix = outputSuffix(settings);
   let candidate = path.join(directory, `${parsed.name}_${suffix}${parsed.ext}`);
   let index = 2;
@@ -397,8 +397,9 @@ async function processOne(item, settings, index, total) {
         onStdout: createProgressReader(duration, 0, 100, (progress) => update('processing', progress, `Cleaning audio channel · ${progress}%`))
       });
     }
-    const original = settings.moveOriginals ? await moveOriginalVideo(item.path) : item.path;
-    update('complete', 100, settings.moveOriginals ? 'Complete · original moved' : 'Complete');
+    const moveOriginal = movesOriginal(settings.fileOrganization);
+    const original = moveOriginal ? await moveOriginalVideo(item.path) : item.path;
+    update('complete', 100, moveOriginal ? 'Complete · original moved' : 'Complete');
     return { id: item.id, ok: true, output, original };
   } catch (error) {
     if (fs.existsSync(output)) await fs.promises.rm(output, { force: true }).catch(() => {});

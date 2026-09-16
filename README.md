@@ -12,7 +12,7 @@ A Windows desktop application for repairing, previewing, and cleaning audio in H
 - Adjust the maximum noise-reduction attenuation from natural to aggressive.
 - Apply one set of global settings or give individual videos custom settings.
 - Preserve the original video stream without re-encoding it.
-- Move successfully processed originals into a sibling **Original** folder by default.
+- Choose whether original and processed videos remain together, originals move into **Original**, or processed videos move into **Fixed Videos**.
 - Avoid overwriting existing processed videos or archived originals.
 
 ## Video editor
@@ -32,9 +32,13 @@ The editor provides:
 
 ## Output files
 
-Processed videos are placed beside each source by default. The **Place processed videos in a folder** option creates a **Fixed Videos** folder when enabled, and a different base output location can also be selected.
+The three-way **File organization** control determines where completed files go:
 
-After a video processes successfully, its source is moved into an **Original** folder beside its previous location by default. Disable **Move original videos into a folder** to leave source videos in place. Existing files are never overwritten; a numbered suffix is added when necessary.
+- **Together** keeps the original and processed video side by side. This is the default.
+- **Original** moves the successfully processed source into an **Original** folder.
+- **Fixed Videos** places the processed result in a **Fixed Videos** folder.
+
+A different base output location can also be selected. Existing files are never overwritten; a numbered suffix is added when necessary.
 
 Output filenames describe the work performed:
 
