@@ -13,6 +13,8 @@ let pendingSecondInstanceFocus = false;
 let editorView = null;
 let editorViewReady = null;
 let editorOpening = false;
+let cachedQueueSnapshot = null;
+let queueSnapshotCaptureToken = 0;
 let activeProcess = null;
 let cancelRequested = false;
 let lastVideoDirectory = null;
@@ -126,6 +128,21 @@ function prepareEditorTransition(session, direction, snapshot) {
   });
 }
 
+function waitForEditorTransitionApproval(session) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      session.transitionApproved = null;
+      resolve();
+    };
+    session.transitionApproved = finish;
+    send('editor-ready-to-transition');
+    setTimeout(finish, 1000);
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1180,
@@ -170,6 +187,7 @@ function closeEditorView() {
   const view = editorView;
   const session = editorSessions.get(view.webContents.id);
   if (session?.transitionReady) session.transitionReady();
+  if (session?.transitionApproved) session.transitionApproved();
   editorSessions.delete(view.webContents.id);
   if (session && session.tempDirectory) fs.promises.rm(session.tempDirectory, { recursive: true, force: true }).catch(() => {});
   send('editor-visibility-changed', false);
@@ -217,12 +235,15 @@ async function createEditorView(payload) {
       customSettings: payload.customSettings || null,
       tempDirectory: null,
       attached: false,
-      transitionReady: null
+      transitionReady: null,
+      transitionApproved: null
     };
     const editorWebContentsId = editorView.webContents.id;
     editorSessions.set(editorWebContentsId, session);
-    const snapshot = await captureQueueSnapshot();
+    const snapshot = cachedQueueSnapshot || await captureQueueSnapshot();
     await prepareEditorTransition(session, 'in', snapshot);
+    await waitForEditorTransitionApproval(session);
+    if (!mainWindow || mainWindow.isDestroyed() || session.webContents.isDestroyed() || !editorSessions.has(editorWebContentsId)) return;
     layoutEditorView();
     mainWindow.contentView.addChildView(editorView);
     session.attached = true;
@@ -626,6 +647,20 @@ ipcMain.handle('close-editor', (event) => {
 ipcMain.on('editor-transition-ready', (event) => {
   const session = editorSessions.get(event.sender.id);
   if (session?.transitionReady) session.transitionReady();
+});
+
+ipcMain.on('editor-transition-approved', (event) => {
+  if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return;
+  for (const session of editorSessions.values()) {
+    if (session.transitionApproved) session.transitionApproved();
+  }
+});
+
+ipcMain.on('cache-queue-snapshot', async (event) => {
+  if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return;
+  const token = ++queueSnapshotCaptureToken;
+  const snapshot = await captureQueueSnapshot().catch(() => null);
+  if (snapshot && token === queueSnapshotCaptureToken) cachedQueueSnapshot = snapshot;
 });
 
 ipcMain.on('request-editor-back', async (event) => {

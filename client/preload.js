@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('hdzero', {
   selectVideos: () => ipcRenderer.invoke('select-videos'),
   selectOutputDirectory: () => ipcRenderer.invoke('select-output-directory'),
   openOutputDirectory: (payload) => ipcRenderer.invoke('open-output-directory', payload),
+  cacheQueueSnapshot: () => ipcRenderer.send('cache-queue-snapshot'),
+  approveEditorTransition: () => ipcRenderer.send('editor-transition-approved'),
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
   openEditor: (payload) => ipcRenderer.invoke('open-editor', payload),
   requestEditorBack: () => ipcRenderer.send('request-editor-back'),
@@ -39,6 +41,11 @@ contextBridge.exposeInMainWorld('hdzero', {
     const listener = (_event, visible) => callback(visible);
     ipcRenderer.on('editor-visibility-changed', listener);
     return () => ipcRenderer.removeListener('editor-visibility-changed', listener);
+  },
+  onEditorReady: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('editor-ready-to-transition', listener);
+    return () => ipcRenderer.removeListener('editor-ready-to-transition', listener);
   },
   onOpenSettings: (callback) => {
     const listener = () => callback();

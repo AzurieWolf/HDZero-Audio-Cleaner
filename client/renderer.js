@@ -3,6 +3,7 @@ const acceptedExtensions = new Set(['.mp4', '.mkv', '.mov', '.avi', '.webm', '.m
 const outputWarningPreferenceKey = 'hdzero-suppress-multiple-output-warning';
 const customOutputWarningPreferenceKey = 'hdzero-suppress-custom-output-warning';
 let queueScrollFrame = 0;
+let queueSnapshotFrame = 0;
 let outputWarningResolver = null;
 let outputWarningReturnFocus = null;
 let activeOutputWarningPreferenceKey = null;
@@ -25,7 +26,8 @@ const elements = {
   outputWarningMessage: document.getElementById('output-warning-message'),
   outputWarningNever: document.getElementById('output-warning-never'),
   outputWarningCancel: document.getElementById('output-warning-cancel'),
-  outputWarningConfirm: document.getElementById('output-warning-confirm')
+  outputWarningConfirm: document.getElementById('output-warning-confirm'),
+  editorLoading: document.getElementById('editor-loading-overlay')
 };
 
 function fileName(filePath) { return filePath.split(/[\\/]/).pop(); }
@@ -171,6 +173,39 @@ function keepProcessingItemVisible() {
   });
 }
 
+function scheduleQueueSnapshotCache() {
+  cancelAnimationFrame(queueSnapshotFrame);
+  if (state.processing) return;
+  queueSnapshotFrame = requestAnimationFrame(() => {
+    queueSnapshotFrame = 0;
+    window.hdzero.cacheQueueSnapshot();
+  });
+}
+
+function showEditorLoading() {
+  elements.editorLoading.classList.remove('closing');
+  elements.editorLoading.hidden = false;
+}
+
+function hideEditorLoading() {
+  if (elements.editorLoading.hidden) return Promise.resolve();
+  elements.editorLoading.classList.add('closing');
+  return new Promise((resolve) => {
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      elements.editorLoading.removeEventListener('animationend', onAnimationEnd);
+      elements.editorLoading.hidden = true;
+      elements.editorLoading.classList.remove('closing');
+      resolve();
+    };
+    const onAnimationEnd = (event) => { if (event.target === elements.editorLoading) finish(); };
+    elements.editorLoading.addEventListener('animationend', onAnimationEnd);
+    setTimeout(finish, 220);
+  });
+}
+
 function render() {
   elements.dropZone.classList.toggle('compact', state.items.length > 0);
   elements.dropTitle.textContent = state.items.length ? 'Drop more videos here' : 'Drop video files here';
@@ -199,6 +234,7 @@ function render() {
       <button class="remove-button" type="button" data-remove="${item.id}" aria-label="Remove ${escapeHtml(fileName(item.path))}" ${state.processing ? 'disabled' : ''}>×</button>
     </article>`).join('');
   keepProcessingItemVisible();
+  scheduleQueueSnapshotCache();
 }
 
 async function chooseVideos() { addPaths(await window.hdzero.selectVideos()); }
@@ -216,9 +252,15 @@ elements.list.addEventListener('click', (event) => {
   }
   if (editButton && !state.processing) {
     const item = state.items.find((candidate) => candidate.id === Number(editButton.dataset.edit));
-    if (item) window.hdzero.openEditor({
-      id: item.id, path: item.path, customSettings: item.customSettings, globalSettings: globalTreatmentSettings()
-    });
+    if (item) {
+      showEditorLoading();
+      window.hdzero.openEditor({
+        id: item.id, path: item.path, customSettings: item.customSettings, globalSettings: globalTreatmentSettings()
+      }).catch(async (error) => {
+        await hideEditorLoading();
+        elements.summary.textContent = `Could not open editor: ${error.message}`;
+      });
+    }
   }
 });
 
@@ -364,6 +406,11 @@ window.hdzero.onGlobalSettings((settings) => {
 
 window.hdzero.onEditorVisibility((visible) => {
   document.body.classList.toggle('editor-active', visible);
+});
+
+window.hdzero.onEditorReady(async () => {
+  await hideEditorLoading();
+  window.hdzero.approveEditorTransition();
 });
 
 document.getElementById('editor-back-button').addEventListener('click', () => {
