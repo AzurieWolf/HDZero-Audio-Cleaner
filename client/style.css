@@ -252,12 +252,18 @@ main {
 }
 
 .queue-panel {
+    display: flex;
+    flex-direction: column;
     min-height: 428px;
     padding: 19px;
 }
 
 .settings-panel {
     padding: 19px;
+}
+
+.queue-panel>.panel-heading {
+    flex: 0 0 auto;
 }
 
 .panel-heading {
@@ -342,6 +348,7 @@ main {
 
 .drop-zone {
     display: grid;
+    flex: 1 1 auto;
     place-items: center;
     min-height: 330px;
     border: 1px dashed #34414c;
@@ -393,6 +400,7 @@ main {
 }
 
 .drop-zone.compact {
+    flex: 0 0 auto;
     grid-template-columns: 38px auto 1fr;
     justify-items: start;
     gap: 10px;
@@ -429,9 +437,10 @@ main {
 
 .queue-list {
     display: flex;
+    flex: 1 1 0;
     flex-direction: column;
     gap: 8px;
-    max-height: 330px;
+    min-height: 0;
     overflow: auto;
     padding-right: 3px;
 }
