@@ -6,6 +6,7 @@ const { pathToFileURL } = require('url');
 const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell } = require('electron');
 const { moveOriginalVideo, movesOriginal, outputDirectoryFor } = require('./file-organization');
 
+const developerMode = process.argv.includes('--developer-mode');
 let mainWindow;
 let editorView = null;
 let editorViewReady = null;
@@ -97,6 +98,9 @@ function createWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     sendWindowState(mainWindow);
     prepareEditorView();
+    if (developerMode && !mainWindow.webContents.isDevToolsOpened()) {
+      mainWindow.webContents.openDevTools({ mode: 'detach', activate: true });
+    }
   });
   mainWindow.on('maximize', () => sendWindowState(mainWindow));
   mainWindow.on('unmaximize', () => sendWindowState(mainWindow));
