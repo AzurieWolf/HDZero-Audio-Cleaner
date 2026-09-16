@@ -1,5 +1,6 @@
 const state = { items: [], outputDirectory: null, processing: false, cancelling: false, nextId: 1 };
 const acceptedExtensions = new Set(['.mp4', '.mkv', '.mov', '.avi', '.webm', '.m4v']);
+let queueScrollFrame = 0;
 
 const elements = {
   list: document.getElementById('queue-list'), dropZone: document.getElementById('drop-zone'),
@@ -76,6 +77,33 @@ function addPaths(paths) {
   render();
 }
 
+function keepProcessingItemVisible() {
+  cancelAnimationFrame(queueScrollFrame);
+  queueScrollFrame = requestAnimationFrame(() => {
+    queueScrollFrame = 0;
+    const activeItem = elements.list.querySelector('.queue-item.processing');
+    if (!activeItem || elements.list.hidden) return;
+
+    const listBounds = elements.list.getBoundingClientRect();
+    const itemBounds = activeItem.getBoundingClientRect();
+    const edgePadding = 4;
+    let scrollOffset = 0;
+
+    if (itemBounds.top < listBounds.top + edgePadding) {
+      scrollOffset = itemBounds.top - listBounds.top - edgePadding;
+    } else if (itemBounds.bottom > listBounds.bottom - edgePadding) {
+      scrollOffset = itemBounds.bottom - listBounds.bottom + edgePadding;
+    }
+
+    if (scrollOffset) {
+      elements.list.scrollTo({
+        top: elements.list.scrollTop + scrollOffset,
+        behavior: 'smooth'
+      });
+    }
+  });
+}
+
 function render() {
   elements.dropZone.classList.toggle('compact', state.items.length > 0);
   elements.dropTitle.textContent = state.items.length ? 'Drop more videos here' : 'Drop video files here';
@@ -103,6 +131,7 @@ function render() {
       <button class="edit-button" type="button" data-edit="${item.id}" ${state.processing ? 'disabled' : ''}>Edit / preview</button>
       <button class="remove-button" type="button" data-remove="${item.id}" aria-label="Remove ${escapeHtml(fileName(item.path))}" ${state.processing ? 'disabled' : ''}>×</button>
     </article>`).join('');
+  keepProcessingItemVisible();
 }
 
 async function chooseVideos() { addPaths(await window.hdzero.selectVideos()); }
