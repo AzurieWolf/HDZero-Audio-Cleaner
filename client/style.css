@@ -364,6 +364,22 @@ main {
     background: rgba(34, 211, 197, .045);
 }
 
+.drop-zone.disabled {
+    opacity: .52;
+    cursor: not-allowed;
+}
+
+.drop-zone.disabled:hover {
+    border-color: #34414c;
+    background: rgba(7, 11, 15, .35);
+}
+
+.choice.disabled,
+.denoise-card.processing-disabled {
+    opacity: .52;
+    cursor: not-allowed;
+}
+
 .drop-zone>span {
     margin-top: -50px;
     color: var(--muted);

@@ -2,6 +2,8 @@ const state = { items: [], outputDirectory: null, processing: false, cancelling:
 const acceptedExtensions = new Set(['.mp4', '.mkv', '.mov', '.avi', '.webm', '.m4v']);
 const outputWarningPreferenceKey = 'hdzero-suppress-multiple-output-warning';
 const customOutputWarningPreferenceKey = 'hdzero-suppress-custom-output-warning';
+const fileOrganizationPreferenceKey = 'hdzero-file-organization';
+const openWhenCompletePreferenceKey = 'hdzero-open-when-complete';
 let queueScrollFrame = 0;
 let queueSnapshotFrame = 0;
 let outputWarningResolver = null;
@@ -18,6 +20,7 @@ const elements = {
   attenuationValue: document.getElementById('attenuation-value'), attenuationControls: document.getElementById('attenuation-controls'),
   output: document.getElementById('output-button'), openOutput: document.getElementById('open-output-button'),
   outputRow: document.getElementById('output-row'), outputLabel: document.getElementById('output-label'),
+  channelModes: Array.from(document.querySelectorAll('input[name="channel"]')),
   organizationModes: Array.from(document.querySelectorAll('input[name="file-organization"]')),
   openWhenComplete: document.getElementById('open-when-complete'), summary: document.getElementById('summary'),
   outputWarning: document.getElementById('output-warning-modal'),
@@ -41,6 +44,21 @@ function uniqueSourceDirectoryCount() {
 }
 function escapeHtml(value) { const node = document.createElement('span'); node.textContent = value; return node.innerHTML; }
 function organizationMode() { return document.querySelector('input[name="file-organization"]:checked').value; }
+function savePreference(key, value) {
+  try { localStorage.setItem(key, String(value)); } catch {}
+}
+
+function restoreOutputPreferences() {
+  try {
+    const savedOrganization = localStorage.getItem(fileOrganizationPreferenceKey);
+    const organizationInput = elements.organizationModes.find((input) => input.value === savedOrganization);
+    if (organizationInput) organizationInput.checked = true;
+
+    const savedOpenWhenComplete = localStorage.getItem(openWhenCompletePreferenceKey);
+    if (savedOpenWhenComplete !== null) elements.openWhenComplete.checked = savedOpenWhenComplete === 'true';
+  } catch {}
+}
+
 function globalTreatmentSettings() {
   return {
     channel: document.querySelector('input[name="channel"]:checked').value,
@@ -138,6 +156,7 @@ function closeOutputWarning(confirmed) {
 }
 
 function addPaths(paths) {
+  if (state.processing) return;
   const known = new Set(state.items.map((item) => item.path.toLowerCase()));
   paths.filter((filePath) => acceptedExtensions.has(extension(filePath)) && !known.has(filePath.toLowerCase())).forEach((filePath) => {
     state.items.push({ id: state.nextId++, path: filePath, status: 'queued', progress: 0, detail: 'Waiting', customSettings: null });
@@ -208,12 +227,19 @@ function hideEditorLoading() {
 
 function render() {
   elements.dropZone.classList.toggle('compact', state.items.length > 0);
-  elements.dropTitle.textContent = state.items.length ? 'Drop more videos here' : 'Drop video files here';
-  elements.dropSubtitle.textContent = state.items.length ? 'or click to browse' : 'or use Add videos to select multiple recordings';
+  elements.dropZone.classList.toggle('disabled', state.processing);
+  elements.dropZone.setAttribute('aria-disabled', String(state.processing));
+  elements.dropTitle.textContent = state.processing ? 'Video queue is processing' : (state.items.length ? 'Drop more videos here' : 'Drop video files here');
+  elements.dropSubtitle.textContent = state.processing ? 'Stop or finish processing to add videos' : (state.items.length ? 'or click to browse' : 'or use Add videos to select multiple recordings');
   elements.list.hidden = state.items.length === 0;
   elements.count.textContent = `${state.items.length} ${state.items.length === 1 ? 'file' : 'files'}`;
   elements.clear.disabled = state.processing || state.items.length === 0;
   elements.add.disabled = state.processing;
+  elements.channelModes.forEach((input) => { input.disabled = state.processing; });
+  document.querySelectorAll('.choice').forEach((choice) => choice.classList.toggle('disabled', state.processing));
+  elements.denoise.disabled = state.processing;
+  elements.denoise.closest('.denoise-card').classList.toggle('processing-disabled', state.processing);
+  elements.attenuation.disabled = state.processing || !elements.denoise.checked;
   updateOutputControl();
   elements.organizationModes.forEach((input) => { input.disabled = state.processing; });
   elements.openWhenComplete.disabled = state.processing;
@@ -256,7 +282,10 @@ function updateQueueItemProgress(item) {
   scheduleQueueSnapshotCache();
 }
 
-async function chooseVideos() { addPaths(await window.hdzero.selectVideos()); }
+async function chooseVideos() {
+  if (state.processing) return;
+  addPaths(await window.hdzero.selectVideos());
+}
 
 elements.add.addEventListener('click', chooseVideos);
 elements.dropZone.addEventListener('click', chooseVideos);
@@ -283,9 +312,13 @@ elements.list.addEventListener('click', (event) => {
   }
 });
 
-['dragenter', 'dragover'].forEach((name) => document.addEventListener(name, (event) => { event.preventDefault(); elements.dropZone.classList.add('dragging'); }));
+['dragenter', 'dragover'].forEach((name) => document.addEventListener(name, (event) => {
+  event.preventDefault();
+  if (!state.processing) elements.dropZone.classList.add('dragging');
+}));
 ['dragleave', 'drop'].forEach((name) => document.addEventListener(name, (event) => { event.preventDefault(); elements.dropZone.classList.remove('dragging'); }));
 document.addEventListener('drop', (event) => {
+  if (state.processing) return;
   const paths = Array.from(event.dataTransfer.files, (file) => window.hdzero.pathFromFile(file)).filter(Boolean);
   addPaths(paths);
 });
@@ -296,7 +329,13 @@ document.querySelectorAll('input[name="channel"]').forEach((input) => input.addE
 
 elements.denoise.addEventListener('change', () => elements.attenuationControls.classList.toggle('disabled', !elements.denoise.checked));
 elements.attenuation.addEventListener('input', () => { elements.attenuationValue.value = `${elements.attenuation.value} dB`; });
-elements.organizationModes.forEach((input) => input.addEventListener('change', updateOrganizationDescription));
+elements.organizationModes.forEach((input) => input.addEventListener('change', () => {
+  savePreference(fileOrganizationPreferenceKey, organizationMode());
+  updateOrganizationDescription();
+}));
+elements.openWhenComplete.addEventListener('change', () => {
+  savePreference(openWhenCompletePreferenceKey, elements.openWhenComplete.checked);
+});
 elements.output.addEventListener('click', async () => {
   const sourceLocationCount = uniqueSourceDirectoryCount();
   if (sourceLocationCount > 1 && !isOutputWarningSuppressed(customOutputWarningPreferenceKey)) {
@@ -451,4 +490,5 @@ window.hdzero.getAppInfo().then(({ version }) => {
   document.getElementById('app-version').textContent = `v${version}`;
 });
 
-render();
+restoreOutputPreferences();
+updateOrganizationDescription();
