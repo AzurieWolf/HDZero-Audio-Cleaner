@@ -237,6 +237,25 @@ function render() {
   scheduleQueueSnapshotCache();
 }
 
+function updateQueueItemProgress(item) {
+  const row = elements.list.querySelector(`.queue-item[data-id="${item.id}"]`);
+  if (!row) {
+    render();
+    return;
+  }
+
+  row.classList.remove('queued', 'processing', 'complete', 'failed', 'cancelled');
+  row.classList.add(item.status);
+  const detail = row.querySelector('.file-copy small');
+  const progressFill = row.querySelector('.item-progress i');
+  const status = row.querySelector('.status-pill');
+  if (detail) detail.textContent = item.detail;
+  if (progressFill) progressFill.style.width = `${item.progress}%`;
+  if (status) status.textContent = item.status;
+  keepProcessingItemVisible();
+  scheduleQueueSnapshotCache();
+}
+
 async function chooseVideos() { addPaths(await window.hdzero.selectVideos()); }
 
 elements.add.addEventListener('click', chooseVideos);
@@ -371,7 +390,7 @@ window.hdzero.onProgress((update) => {
   if (!item) return;
   Object.assign(item, { status: update.status, progress: update.progress, detail: update.detail, output: update.output });
   elements.summary.textContent = update.status === 'failed' ? `Error: ${update.detail}` : `File ${update.index} of ${update.total} · ${update.detail}`;
-  render();
+  updateQueueItemProgress(item);
 });
 
 window.hdzero.onFinished(({ results, cancelled }) => {

@@ -409,26 +409,36 @@ function previewPlaybackFilter(channel) {
 
 async function processOne(item, settings, index, total) {
   const ffmpeg = getFfmpegPath();
-  const duration = await probeDuration(ffmpeg, item.path);
   const output = outputPathFor(item.path, settings.outputDirectory, settings);
+  let currentProgress = 0;
+  const update = (status, progress, detail = '') => {
+    const requestedProgress = Number.isFinite(Number(progress)) ? Number(progress) : currentProgress;
+    currentProgress = status === 'complete'
+      ? 100
+      : Math.max(currentProgress, Math.max(0, Math.min(99, Math.round(requestedProgress))));
+    send('processing-progress', {
+      id: item.id, status, progress: currentProgress, detail, index, total, output
+    });
+  };
+
+  update('processing', 0, 'Preparing video · 0%');
+  const duration = await probeDuration(ffmpeg, item.path);
   const tempDirectory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'hdzero-audio-'));
   const extracted = path.join(tempDirectory, 'source.wav');
   const enhanced = path.join(tempDirectory, 'enhanced.wav');
-  const update = (status, progress, detail = '') => send('processing-progress', {
-    id: item.id, status, progress, detail, index, total, output
-  });
 
   try {
     await fs.promises.mkdir(path.dirname(output), { recursive: true });
+    update('processing', 5, 'Video prepared · 5%');
     if (settings.denoise) {
-      update('processing', 0, 'Extracting audio · 0%');
+      update('processing', 5, 'Extracting audio · 5%');
       const extractionArgs = withFfmpegProgress([
         '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
         '-i', item.path, '-map', '0:a:0', ...channelFilter(settings.channel),
         '-ar', '48000', '-c:a', 'pcm_s16le', extracted
       ]);
       await runProcess(ffmpeg, extractionArgs, {
-        onStdout: createProgressReader(duration, 0, 25, (progress) => update('processing', progress, `Extracting audio · ${progress}%`))
+        onStdout: createProgressReader(duration, 5, 25, (progress) => update('processing', progress, `Extracting audio · ${progress}%`))
       });
 
       update('processing', 25, 'Loading DeepFilterNet 3 · 25%');
@@ -465,26 +475,27 @@ async function processOne(item, settings, index, total) {
         '-c:v', 'copy', ...audioCodecFor(output), '-shortest', output
       ]);
       await runProcess(ffmpeg, muxArgs, {
-        onStdout: createProgressReader(duration, 75, 100, (progress) => update('processing', progress, `Replacing audio track · ${progress}%`))
+        onStdout: createProgressReader(duration, 75, 95, (progress) => update('processing', progress, `Replacing audio track · ${progress}%`))
       });
     } else {
-      update('processing', 0, 'Cleaning audio channel · 0%');
+      update('processing', 5, 'Cleaning audio channel · 5%');
       const cleaningArgs = withFfmpegProgress([
         '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
         '-i', item.path, '-map', '0:v:0', '-map', '0:a:0', '-c:v', 'copy',
         ...channelFilter(settings.channel), ...audioCodecFor(output), output
       ]);
       await runProcess(ffmpeg, cleaningArgs, {
-        onStdout: createProgressReader(duration, 0, 100, (progress) => update('processing', progress, `Cleaning audio channel · ${progress}%`))
+        onStdout: createProgressReader(duration, 5, 95, (progress) => update('processing', progress, `Cleaning audio channel · ${progress}%`))
       });
     }
     const moveOriginal = movesOriginal(settings.fileOrganization);
+    update('processing', 95, moveOriginal ? 'Moving original video · 95%' : 'Finalizing output · 95%');
     const original = moveOriginal ? await moveOriginalVideo(item.path) : item.path;
     update('complete', 100, moveOriginal ? 'Complete · original moved' : 'Complete');
     return { id: item.id, ok: true, output, original };
   } catch (error) {
     if (fs.existsSync(output)) await fs.promises.rm(output, { force: true }).catch(() => {});
-    update(cancelRequested ? 'cancelled' : 'failed', 0, error.message);
+    update(cancelRequested ? 'cancelled' : 'failed', currentProgress, error.message);
     return { id: item.id, ok: false, cancelled: cancelRequested, error: error.message };
   } finally {
     await fs.promises.rm(tempDirectory, { recursive: true, force: true }).catch(() => {});
