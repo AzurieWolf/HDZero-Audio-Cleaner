@@ -840,6 +840,9 @@ legend {
 }
 
 .range-labels {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
     color: #505b67 !important;
 }
 
