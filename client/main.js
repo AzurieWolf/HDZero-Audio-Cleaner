@@ -319,18 +319,31 @@ function runProcess(command, args, { onStdout } = {}) {
   });
 }
 
-function probeDuration(ffmpeg, input) {
+function probeMedia(ffmpeg, input) {
   return new Promise((resolve) => {
     let stderr = '';
     const child = spawn(ffmpeg, ['-hide_banner', '-i', input], { windowsHide: true });
     child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
-    child.on('error', () => resolve(0));
+    child.on('error', () => resolve({ duration: 0, videoBitrate: 0 }));
     child.on('close', () => {
-      const match = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
-      if (!match) return resolve(0);
-      resolve((Number(match[1]) * 3600) + (Number(match[2]) * 60) + Number(match[3]));
+      const durationMatch = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+      const duration = durationMatch
+        ? (Number(durationMatch[1]) * 3600) + (Number(durationMatch[2]) * 60) + Number(durationMatch[3])
+        : 0;
+      const videoLine = stderr.split(/\r?\n/).find((line) => /Stream #.*Video:/i.test(line)) || '';
+      const videoBitrateMatch = videoLine.match(/(\d+(?:\.\d+)?)\s*(kb\/s|mb\/s)/i);
+      const overallBitrateMatch = stderr.match(/Duration:.*?bitrate:\s*(\d+(?:\.\d+)?)\s*(kb\/s|mb\/s)/i);
+      const bitrateMatch = videoBitrateMatch || overallBitrateMatch;
+      const videoBitrate = bitrateMatch
+        ? Math.round(Number(bitrateMatch[1]) * (bitrateMatch[2].toLowerCase() === 'mb/s' ? 1000000 : 1000))
+        : 0;
+      resolve({ duration, videoBitrate });
     });
   });
+}
+
+async function probeDuration(ffmpeg, input) {
+  return (await probeMedia(ffmpeg, input)).duration;
 }
 
 function createProgressReader(duration, start, end, callback) {
@@ -397,23 +410,31 @@ function normalizedVideoCodec(codec) {
   return supported.includes(codec) ? codec : 'h264';
 }
 
-function videoCodecFor(settings) {
+function videoCodecFor(settings, sourceVideoBitrate = 0) {
   if (!settings.reencode) return ['-c:v', 'copy'];
+  const bitrate = Math.max(0, Math.round(Number(sourceVideoBitrate) || 0));
+  const rate = bitrate ? String(bitrate) : null;
+  const maxrate = bitrate ? String(Math.round(bitrate * 1.5)) : null;
+  const bufsize = bitrate ? String(bitrate * 2) : null;
+  const softwareRate = bitrate ? ['-b:v', rate, '-maxrate', maxrate, '-bufsize', bufsize] : [];
+  const nvencRate = bitrate
+    ? ['-rc', 'vbr', '-b:v', rate, '-maxrate', maxrate, '-bufsize', bufsize]
+    : ['-rc', 'vbr', '-cq', '20', '-b:v', '0'];
   switch (normalizedVideoCodec(settings.videoCodec)) {
     case 'h264-nvenc':
-      return ['-c:v', 'h264_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '20', '-b:v', '0', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'];
+      return ['-c:v', 'h264_nvenc', '-preset', 'p5', ...nvencRate, '-movflags', '+faststart'];
     case 'h265-nvenc':
-      return ['-c:v', 'hevc_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '24', '-b:v', '0', '-pix_fmt', 'yuv420p', '-tag:v', 'hvc1', '-movflags', '+faststart'];
+      return ['-c:v', 'hevc_nvenc', '-preset', 'p5', ...nvencRate, '-tag:v', 'hvc1', '-movflags', '+faststart'];
     case 'av1-nvenc':
-      return ['-c:v', 'av1_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '30', '-b:v', '0', '-pix_fmt', 'yuv420p', '-tag:v', 'av01', '-movflags', '+faststart'];
+      return ['-c:v', 'av1_nvenc', '-preset', 'p5', ...nvencRate, '-tag:v', 'av01', '-movflags', '+faststart'];
     case 'h265':
-      return ['-c:v', 'libx265', '-preset', 'medium', '-crf', '24', '-pix_fmt', 'yuv420p', '-tag:v', 'hvc1', '-movflags', '+faststart'];
+      return ['-c:v', 'libx265', '-preset', 'slow', ...softwareRate, ...(bitrate ? [] : ['-crf', '20']), '-tag:v', 'hvc1', '-movflags', '+faststart'];
     case 'av1':
-      return ['-c:v', 'libsvtav1', '-preset', '8', '-crf', '30', '-pix_fmt', 'yuv420p', '-tag:v', 'av01', '-movflags', '+faststart'];
+      return ['-c:v', 'libsvtav1', '-preset', '8', ...(bitrate ? ['-b:v', rate] : ['-crf', '20']), '-tag:v', 'av01', '-movflags', '+faststart'];
     case 'vp9':
-      return ['-c:v', 'libvpx-vp9', '-crf', '30', '-b:v', '0', '-row-mt', '1', '-pix_fmt', 'yuv420p'];
+      return ['-c:v', 'libvpx-vp9', ...softwareRate, ...(bitrate ? [] : ['-crf', '20', '-b:v', '0']), '-row-mt', '1'];
     default:
-      return ['-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'];
+      return ['-c:v', 'libx264', '-preset', 'slow', ...softwareRate, ...(bitrate ? [] : ['-crf', '18']), '-movflags', '+faststart'];
   }
 }
 
@@ -450,7 +471,7 @@ async function processOne(item, settings, index, total) {
   };
 
   update('processing', 0, 'Preparing video · 0%');
-  const duration = await probeDuration(ffmpeg, item.path);
+  const { duration, videoBitrate } = await probeMedia(ffmpeg, item.path);
   const tempDirectory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'hdzero-audio-'));
   const extracted = path.join(tempDirectory, 'source.wav');
   const enhanced = path.join(tempDirectory, 'enhanced.wav');
@@ -500,7 +521,7 @@ async function processOne(item, settings, index, total) {
       const muxArgs = withFfmpegProgress([
         '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
         '-i', item.path, '-i', enhanced, '-map', '0:v:0', '-map', '1:a:0',
-        ...videoCodecFor(settings), ...audioCodecFor(output), '-shortest', output
+        ...videoCodecFor(settings, videoBitrate), ...audioCodecFor(output), '-shortest', output
       ]);
       await runProcess(ffmpeg, muxArgs, {
         onStdout: createProgressReader(duration, 75, 95, (progress) => update('processing', progress, `${settings.reencode ? 'Encoding video' : 'Replacing audio track'} · ${progress}%`))
@@ -520,7 +541,7 @@ async function processOne(item, settings, index, total) {
       const encodingArgs = withFfmpegProgress([
         '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
         '-i', item.path, '-i', enhanced, '-map', '0:v:0', '-map', '1:a:0',
-        ...videoCodecFor(settings), ...audioCodecFor(output), '-shortest', output
+        ...videoCodecFor(settings, videoBitrate), ...audioCodecFor(output), '-shortest', output
       ]);
       await runProcess(ffmpeg, encodingArgs, {
         onStdout: createProgressReader(duration, 35, 95, (progress) => update('processing', progress, `Encoding video with processed audio · ${progress}%`))
@@ -530,7 +551,7 @@ async function processOne(item, settings, index, total) {
       update('processing', 5, `${operation} · 5%`);
       const cleaningArgs = withFfmpegProgress([
         '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
-        '-i', item.path, '-map', '0:v:0', '-map', '0:a:0', ...videoCodecFor(settings),
+        '-i', item.path, '-map', '0:v:0', '-map', '0:a:0', ...videoCodecFor(settings, videoBitrate),
         ...channelFilter(settings.channel), ...(settings.channel === 'both' ? ['-c:a', 'copy'] : audioCodecFor(output)), output
       ]);
       await runProcess(ffmpeg, cleaningArgs, {
