@@ -21,7 +21,7 @@ let lastVideoDirectory = null;
 const editorSessions = new Map();
 
 const VIDEO_FILTERS = [
-  { name: 'Video files', extensions: ['mp4', 'mkv', 'mov', 'avi', 'webm', 'm4v'] },
+  { name: 'Video files', extensions: ['mp4', 'mkv', 'mov', 'avi', 'webm', 'm4v', 'ts', 'mts', 'm2ts'] },
   { name: 'All files', extensions: ['*'] }
 ];
 

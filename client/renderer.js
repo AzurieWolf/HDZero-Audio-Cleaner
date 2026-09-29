@@ -1,5 +1,5 @@
 const state = { items: [], outputDirectory: null, processing: false, cancelling: false, nextId: 1 };
-const acceptedExtensions = new Set(['.mp4', '.mkv', '.mov', '.avi', '.webm', '.m4v']);
+const acceptedExtensions = new Set(['.mp4', '.mkv', '.mov', '.avi', '.webm', '.m4v', '.ts', '.mts', '.m2ts']);
 const outputWarningPreferenceKey = 'hdzero-suppress-multiple-output-warning';
 const customOutputWarningPreferenceKey = 'hdzero-suppress-custom-output-warning';
 const fileOrganizationPreferenceKey = 'hdzero-file-organization';
