@@ -18,6 +18,8 @@ const elements = {
   processLabel: document.getElementById('process-label'), caption: document.getElementById('process-caption'),
   denoise: document.getElementById('denoise-toggle'), attenuation: document.getElementById('attenuation'),
   attenuationValue: document.getElementById('attenuation-value'), attenuationControls: document.getElementById('attenuation-controls'),
+  reencode: document.getElementById('reencode-toggle'), videoCodec: document.getElementById('video-codec'),
+  encodingControls: document.getElementById('encoding-controls'),
   output: document.getElementById('output-button'), openOutput: document.getElementById('open-output-button'),
   outputRow: document.getElementById('output-row'), outputLabel: document.getElementById('output-label'),
   channelModes: Array.from(document.querySelectorAll('input[name="channel"]')),
@@ -63,7 +65,9 @@ function globalTreatmentSettings() {
   return {
     channel: document.querySelector('input[name="channel"]:checked').value,
     denoise: elements.denoise.checked,
-    attenuation: elements.denoise.checked ? Number(elements.attenuation.value) : null
+    attenuation: elements.denoise.checked ? Number(elements.attenuation.value) : null,
+    reencode: elements.reencode.checked,
+    videoCodec: elements.videoCodec.value
   };
 }
 
@@ -75,6 +79,9 @@ function applyGlobalTreatmentSettings(settings) {
   elements.attenuation.value = Number(settings.attenuation) || 30;
   elements.attenuationValue.value = `${elements.attenuation.value} dB`;
   elements.attenuationControls.classList.toggle('disabled', !elements.denoise.checked);
+  if (typeof settings.reencode === 'boolean') elements.reencode.checked = settings.reencode;
+  if (['h264', 'h265', 'av1', 'vp9'].includes(settings.videoCodec)) elements.videoCodec.value = settings.videoCodec;
+  elements.encodingControls.classList.toggle('disabled', !elements.reencode.checked);
 }
 
 function updateOutputLabel() {
@@ -240,6 +247,9 @@ function render() {
   elements.denoise.disabled = state.processing;
   elements.denoise.closest('.denoise-card').classList.toggle('processing-disabled', state.processing);
   elements.attenuation.disabled = state.processing || !elements.denoise.checked;
+  elements.reencode.disabled = state.processing;
+  elements.videoCodec.disabled = state.processing || !elements.reencode.checked;
+  elements.reencode.closest('.encoding-card').classList.toggle('processing-disabled', state.processing);
   updateOutputControl();
   elements.organizationModes.forEach((input) => { input.disabled = state.processing; });
   elements.openWhenComplete.disabled = state.processing;
@@ -328,6 +338,10 @@ document.querySelectorAll('input[name="channel"]').forEach((input) => input.addE
 }));
 
 elements.denoise.addEventListener('change', () => elements.attenuationControls.classList.toggle('disabled', !elements.denoise.checked));
+elements.reencode.addEventListener('change', () => {
+  elements.encodingControls.classList.toggle('disabled', !elements.reencode.checked);
+  elements.videoCodec.disabled = !elements.reencode.checked;
+});
 elements.attenuation.addEventListener('input', () => { elements.attenuationValue.value = `${elements.attenuation.value} dB`; });
 elements.organizationModes.forEach((input) => input.addEventListener('change', () => {
   savePreference(fileOrganizationPreferenceKey, organizationMode());
@@ -410,6 +424,8 @@ elements.process.addEventListener('click', async () => {
       channel: document.querySelector('input[name="channel"]:checked').value,
       denoise: elements.denoise.checked,
       attenuation: elements.denoise.checked ? Number(elements.attenuation.value) : null,
+      reencode: elements.reencode.checked,
+      videoCodec: elements.videoCodec.value,
       outputDirectory: organizationMode() === 'custom' ? state.outputDirectory : null,
       fileOrganization: organizationMode(),
       openWhenComplete: elements.openWhenComplete.checked

@@ -372,6 +372,7 @@ function outputSuffix(settings) {
       : '';
     operations.push(`denoised${attenuation}`);
   }
+  if (settings.reencode) operations.push(`reencoded-${normalizedVideoCodec(settings.videoCodec)}`);
   return operations.length ? operations.join('+') : 'processed';
 }
 
@@ -380,13 +381,33 @@ function outputPathFor(input, outputDirectory, settings) {
   const baseDirectory = outputDirectory || parsed.dir;
   const directory = outputDirectoryFor(baseDirectory, settings.fileOrganization);
   const suffix = outputSuffix(settings);
-  let candidate = path.join(directory, `${parsed.name}_${suffix}${parsed.ext}`);
+  const extension = settings.reencode && normalizedVideoCodec(settings.videoCodec) === 'vp9' ? '.webm'
+    : (settings.reencode ? '.mp4' : parsed.ext);
+  let candidate = path.join(directory, `${parsed.name}_${suffix}${extension}`);
   let index = 2;
   while (fs.existsSync(candidate)) {
-    candidate = path.join(directory, `${parsed.name}_${suffix}-${index}${parsed.ext}`);
+    candidate = path.join(directory, `${parsed.name}_${suffix}-${index}${extension}`);
     index += 1;
   }
   return candidate;
+}
+
+function normalizedVideoCodec(codec) {
+  return ['h264', 'h265', 'av1', 'vp9'].includes(codec) ? codec : 'h264';
+}
+
+function videoCodecFor(settings) {
+  if (!settings.reencode) return ['-c:v', 'copy'];
+  switch (normalizedVideoCodec(settings.videoCodec)) {
+    case 'h265':
+      return ['-c:v', 'libx265', '-preset', 'medium', '-crf', '24', '-pix_fmt', 'yuv420p', '-tag:v', 'hvc1', '-movflags', '+faststart'];
+    case 'av1':
+      return ['-c:v', 'libsvtav1', '-preset', '8', '-crf', '30', '-pix_fmt', 'yuv420p', '-tag:v', 'av01', '-movflags', '+faststart'];
+    case 'vp9':
+      return ['-c:v', 'libvpx-vp9', '-crf', '30', '-b:v', '0', '-row-mt', '1', '-pix_fmt', 'yuv420p'];
+    default:
+      return ['-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'];
+  }
 }
 
 function audioCodecFor(filePath) {
@@ -468,24 +489,24 @@ async function processOne(item, settings, index, total) {
         }
       });
 
-      update('processing', 75, 'Replacing audio track · 75%');
+      update('processing', 75, `${settings.reencode ? 'Encoding video' : 'Replacing audio track'} · 75%`);
       const muxArgs = withFfmpegProgress([
         '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
         '-i', item.path, '-i', enhanced, '-map', '0:v:0', '-map', '1:a:0',
-        '-c:v', 'copy', ...audioCodecFor(output), '-shortest', output
+        ...videoCodecFor(settings), ...audioCodecFor(output), '-shortest', output
       ]);
       await runProcess(ffmpeg, muxArgs, {
-        onStdout: createProgressReader(duration, 75, 95, (progress) => update('processing', progress, `Replacing audio track · ${progress}%`))
+        onStdout: createProgressReader(duration, 75, 95, (progress) => update('processing', progress, `${settings.reencode ? 'Encoding video' : 'Replacing audio track'} · ${progress}%`))
       });
     } else {
-      update('processing', 5, 'Cleaning audio channel · 5%');
+      update('processing', 5, `${settings.reencode ? 'Encoding video' : 'Cleaning audio channel'} · 5%`);
       const cleaningArgs = withFfmpegProgress([
         '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
-        '-i', item.path, '-map', '0:v:0', '-map', '0:a:0', '-c:v', 'copy',
+        '-i', item.path, '-map', '0:v:0', '-map', '0:a:0', ...videoCodecFor(settings),
         ...channelFilter(settings.channel), ...audioCodecFor(output), output
       ]);
       await runProcess(ffmpeg, cleaningArgs, {
-        onStdout: createProgressReader(duration, 5, 95, (progress) => update('processing', progress, `Cleaning audio channel · ${progress}%`))
+        onStdout: createProgressReader(duration, 5, 95, (progress) => update('processing', progress, `${settings.reencode ? 'Encoding video' : 'Cleaning audio channel'} · ${progress}%`))
       });
     }
     const moveOriginal = movesOriginal(settings.fileOrganization);

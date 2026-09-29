@@ -66,6 +66,22 @@
           </div>
         </fieldset>
 
+        <fieldset class="encoding-setting">
+          <legend>Video encoding</legend>
+          <div class="encoding-card">
+            <label class="toggle-row"><span><strong>Re-encode video</strong><small>Convert the video stream to another codec</small></span><span class="switch"><input id="reencode-toggle" type="checkbox"><span></span></span></label>
+            <div id="encoding-controls" class="encoding-controls disabled">
+              <label for="video-codec">Encoding format</label>
+              <select id="video-codec">
+                <option value="h264">H.264 / AVC (MP4)</option>
+                <option value="h265">H.265 / HEVC (MP4)</option>
+                <option value="av1">AV1 (MP4)</option>
+                <option value="vp9">VP9 (WebM)</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
         <fieldset class="organization-setting">
           <legend>File organization</legend>
           <div class="organization-switch" role="radiogroup" aria-label="File organization">
