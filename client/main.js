@@ -385,7 +385,10 @@ function outputSuffix(settings) {
       : '';
     operations.push(`denoised${attenuation}`);
   }
-  if (settings.reencode) operations.push(`reencoded-${normalizedVideoCodec(settings.videoCodec)}`);
+  if (settings.reencode) {
+    operations.push(`reencoded-${normalizedVideoCodec(settings.videoCodec)}`);
+    if (settings.compression) operations.push(`compressed-${normalizedCompressionAmount(settings.compressionAmount)}pct`);
+  }
   return operations.length ? operations.join('+') : 'processed';
 }
 
@@ -410,16 +413,24 @@ function normalizedVideoCodec(codec) {
   return supported.includes(codec) ? codec : 'h264';
 }
 
+function normalizedCompressionAmount(amount) {
+  const numeric = Number(amount);
+  return Number.isFinite(numeric) ? Math.max(5, Math.min(75, Math.round(numeric / 5) * 5)) : 25;
+}
+
 function videoCodecFor(settings, sourceVideoBitrate = 0) {
   if (!settings.reencode) return ['-c:v', 'copy'];
-  const bitrate = Math.max(0, Math.round(Number(sourceVideoBitrate) || 0));
+  const compressionAmount = settings.compression ? normalizedCompressionAmount(settings.compressionAmount) : 0;
+  const sourceBitrate = Math.max(0, Math.round(Number(sourceVideoBitrate) || 0));
+  const bitrate = sourceBitrate ? Math.max(100000, Math.round(sourceBitrate * (1 - (compressionAmount / 100)))) : 0;
+  const qualityPenalty = Math.round(compressionAmount / 10);
   const rate = bitrate ? String(bitrate) : null;
   const maxrate = bitrate ? String(Math.round(bitrate * 1.5)) : null;
   const bufsize = bitrate ? String(bitrate * 2) : null;
   const softwareRate = bitrate ? ['-b:v', rate, '-maxrate', maxrate, '-bufsize', bufsize] : [];
   const nvencRate = bitrate
     ? ['-rc', 'vbr', '-b:v', rate, '-maxrate', maxrate, '-bufsize', bufsize]
-    : ['-rc', 'vbr', '-cq', '20', '-b:v', '0'];
+    : ['-rc', 'vbr', '-cq', String(20 + qualityPenalty), '-b:v', '0'];
   switch (normalizedVideoCodec(settings.videoCodec)) {
     case 'h264-nvenc':
       return ['-c:v', 'h264_nvenc', '-preset', 'p5', ...nvencRate, '-movflags', '+faststart'];
@@ -428,13 +439,13 @@ function videoCodecFor(settings, sourceVideoBitrate = 0) {
     case 'av1-nvenc':
       return ['-c:v', 'av1_nvenc', '-preset', 'p5', ...nvencRate, '-tag:v', 'av01', '-movflags', '+faststart'];
     case 'h265':
-      return ['-c:v', 'libx265', '-preset', 'slow', ...softwareRate, ...(bitrate ? [] : ['-crf', '20']), '-tag:v', 'hvc1', '-movflags', '+faststart'];
+      return ['-c:v', 'libx265', '-preset', 'slow', ...softwareRate, ...(bitrate ? [] : ['-crf', String(20 + qualityPenalty)]), '-tag:v', 'hvc1', '-movflags', '+faststart'];
     case 'av1':
-      return ['-c:v', 'libsvtav1', '-preset', '8', ...(bitrate ? ['-b:v', rate] : ['-crf', '20']), '-tag:v', 'av01', '-movflags', '+faststart'];
+      return ['-c:v', 'libsvtav1', '-preset', '8', ...(bitrate ? ['-b:v', rate] : ['-crf', String(20 + qualityPenalty)]), '-tag:v', 'av01', '-movflags', '+faststart'];
     case 'vp9':
-      return ['-c:v', 'libvpx-vp9', ...softwareRate, ...(bitrate ? [] : ['-crf', '20', '-b:v', '0']), '-row-mt', '1'];
+      return ['-c:v', 'libvpx-vp9', ...softwareRate, ...(bitrate ? [] : ['-crf', String(20 + qualityPenalty), '-b:v', '0']), '-row-mt', '1'];
     default:
-      return ['-c:v', 'libx264', '-preset', 'slow', ...softwareRate, ...(bitrate ? [] : ['-crf', '18']), '-movflags', '+faststart'];
+      return ['-c:v', 'libx264', '-preset', 'slow', ...softwareRate, ...(bitrate ? [] : ['-crf', String(18 + qualityPenalty)]), '-movflags', '+faststart'];
   }
 }
 

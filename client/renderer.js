@@ -20,6 +20,8 @@ const elements = {
   attenuationValue: document.getElementById('attenuation-value'), attenuationControls: document.getElementById('attenuation-controls'),
   reencode: document.getElementById('reencode-toggle'), videoCodec: document.getElementById('video-codec'),
   encodingControls: document.getElementById('encoding-controls'),
+  compression: document.getElementById('compression-toggle'), compressionAmount: document.getElementById('compression-amount'),
+  compressionValue: document.getElementById('compression-value'), compressionControls: document.getElementById('compression-controls'),
   output: document.getElementById('output-button'), openOutput: document.getElementById('open-output-button'),
   outputRow: document.getElementById('output-row'), outputLabel: document.getElementById('output-label'),
   channelModes: Array.from(document.querySelectorAll('input[name="channel"]')),
@@ -67,7 +69,9 @@ function globalTreatmentSettings() {
     denoise: elements.denoise.checked,
     attenuation: elements.denoise.checked ? Number(elements.attenuation.value) : null,
     reencode: elements.reencode.checked,
-    videoCodec: elements.videoCodec.value
+    videoCodec: elements.videoCodec.value,
+    compression: elements.compression.checked,
+    compressionAmount: Number(elements.compressionAmount.value)
   };
 }
 
@@ -83,6 +87,10 @@ function applyGlobalTreatmentSettings(settings) {
   if (['h264', 'h265', 'av1', 'vp9', 'h264-nvenc', 'h265-nvenc', 'av1-nvenc'].includes(settings.videoCodec)) {
     elements.videoCodec.value = settings.videoCodec;
   }
+  if (typeof settings.compression === 'boolean') elements.compression.checked = settings.compression;
+  if (Number.isFinite(Number(settings.compressionAmount))) elements.compressionAmount.value = String(settings.compressionAmount);
+  elements.compressionValue.value = `${elements.compressionAmount.value}%`;
+  elements.compressionControls.classList.toggle('disabled', !elements.compression.checked);
   elements.encodingControls.classList.toggle('disabled', !elements.reencode.checked);
 }
 
@@ -251,6 +259,8 @@ function render() {
   elements.attenuation.disabled = state.processing || !elements.denoise.checked;
   elements.reencode.disabled = state.processing;
   elements.videoCodec.disabled = state.processing || !elements.reencode.checked;
+  elements.compression.disabled = state.processing || !elements.reencode.checked;
+  elements.compressionAmount.disabled = state.processing || !elements.reencode.checked || !elements.compression.checked;
   elements.reencode.closest('.encoding-card').classList.toggle('processing-disabled', state.processing);
   updateOutputControl();
   elements.organizationModes.forEach((input) => { input.disabled = state.processing; });
@@ -343,6 +353,15 @@ elements.denoise.addEventListener('change', () => elements.attenuationControls.c
 elements.reencode.addEventListener('change', () => {
   elements.encodingControls.classList.toggle('disabled', !elements.reencode.checked);
   elements.videoCodec.disabled = !elements.reencode.checked;
+  elements.compression.disabled = !elements.reencode.checked;
+  elements.compressionAmount.disabled = !elements.reencode.checked || !elements.compression.checked;
+});
+elements.compression.addEventListener('change', () => {
+  elements.compressionControls.classList.toggle('disabled', !elements.compression.checked);
+  elements.compressionAmount.disabled = !elements.compression.checked;
+});
+elements.compressionAmount.addEventListener('input', () => {
+  elements.compressionValue.value = `${elements.compressionAmount.value}%`;
 });
 elements.attenuation.addEventListener('input', () => { elements.attenuationValue.value = `${elements.attenuation.value} dB`; });
 elements.organizationModes.forEach((input) => input.addEventListener('change', () => {
@@ -428,6 +447,8 @@ elements.process.addEventListener('click', async () => {
       attenuation: elements.denoise.checked ? Number(elements.attenuation.value) : null,
       reencode: elements.reencode.checked,
       videoCodec: elements.videoCodec.value,
+      compression: elements.compression.checked,
+      compressionAmount: Number(elements.compressionAmount.value),
       outputDirectory: organizationMode() === 'custom' ? state.outputDirectory : null,
       fileOrganization: organizationMode(),
       openWhenComplete: elements.openWhenComplete.checked

@@ -85,6 +85,14 @@
                   <option value="av1-nvenc">AV1 — NVENC (MP4)</option>
                 </optgroup>
               </select>
+              <div class="compression-setting">
+                <label class="toggle-row"><span><strong>Compression</strong><small>Reduce bitrate and output filesize</small></span><span class="switch"><input id="compression-toggle" type="checkbox"><span></span></span></label>
+                <div id="compression-controls" class="compression-controls disabled">
+                  <div><label for="compression-amount">Bitrate reduction</label><output id="compression-value">25%</output></div>
+                  <input id="compression-amount" type="range" min="5" max="75" step="5" value="25">
+                  <div class="range-labels"><span>Higher quality</span><span>Smaller file</span></div>
+                </div>
+              </div>
             </div>
           </div>
         </fieldset>
