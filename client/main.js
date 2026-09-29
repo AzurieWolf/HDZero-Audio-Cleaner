@@ -425,9 +425,9 @@ function audioCodecFor(filePath) {
 }
 
 function channelFilter(channel) {
-  if (channel === 'right') return ['-af', 'pan=mono|c0=c1'];
-  if (channel === 'left') return ['-af', 'pan=mono|c0=c0'];
-  return [];
+  if (channel === 'right') return ['-af', 'pan=stereo|c0=c1|c1=c1'];
+  if (channel === 'left') return ['-af', 'pan=stereo|c0=c0|c1=c0'];
+  return ['-af', 'aformat=channel_layouts=stereo'];
 }
 
 function previewPlaybackFilter(channel) {
