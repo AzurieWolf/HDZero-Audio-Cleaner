@@ -80,7 +80,9 @@ function applyGlobalTreatmentSettings(settings) {
   elements.attenuationValue.value = `${elements.attenuation.value} dB`;
   elements.attenuationControls.classList.toggle('disabled', !elements.denoise.checked);
   if (typeof settings.reencode === 'boolean') elements.reencode.checked = settings.reencode;
-  if (['h264', 'h265', 'av1', 'vp9'].includes(settings.videoCodec)) elements.videoCodec.value = settings.videoCodec;
+  if (['h264', 'h265', 'av1', 'vp9', 'h264-nvenc', 'h265-nvenc', 'av1-nvenc'].includes(settings.videoCodec)) {
+    elements.videoCodec.value = settings.videoCodec;
+  }
   elements.encodingControls.classList.toggle('disabled', !elements.reencode.checked);
 }
 

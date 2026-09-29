@@ -393,12 +393,19 @@ function outputPathFor(input, outputDirectory, settings) {
 }
 
 function normalizedVideoCodec(codec) {
-  return ['h264', 'h265', 'av1', 'vp9'].includes(codec) ? codec : 'h264';
+  const supported = ['h264', 'h265', 'av1', 'vp9', 'h264-nvenc', 'h265-nvenc', 'av1-nvenc'];
+  return supported.includes(codec) ? codec : 'h264';
 }
 
 function videoCodecFor(settings) {
   if (!settings.reencode) return ['-c:v', 'copy'];
   switch (normalizedVideoCodec(settings.videoCodec)) {
+    case 'h264-nvenc':
+      return ['-c:v', 'h264_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '20', '-b:v', '0', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'];
+    case 'h265-nvenc':
+      return ['-c:v', 'hevc_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '24', '-b:v', '0', '-pix_fmt', 'yuv420p', '-tag:v', 'hvc1', '-movflags', '+faststart'];
+    case 'av1-nvenc':
+      return ['-c:v', 'av1_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '30', '-b:v', '0', '-pix_fmt', 'yuv420p', '-tag:v', 'av01', '-movflags', '+faststart'];
     case 'h265':
       return ['-c:v', 'libx265', '-preset', 'medium', '-crf', '24', '-pix_fmt', 'yuv420p', '-tag:v', 'hvc1', '-movflags', '+faststart'];
     case 'av1':

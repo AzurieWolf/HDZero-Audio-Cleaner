@@ -73,10 +73,17 @@
             <div id="encoding-controls" class="encoding-controls disabled">
               <label for="video-codec">Encoding format</label>
               <select id="video-codec">
-                <option value="h264">H.264 / AVC (MP4)</option>
-                <option value="h265">H.265 / HEVC (MP4)</option>
-                <option value="av1">AV1 (MP4)</option>
-                <option value="vp9">VP9 (WebM)</option>
+                <optgroup label="CPU encoding">
+                  <option value="h264">H.264 / AVC (MP4)</option>
+                  <option value="h265">H.265 / HEVC (MP4)</option>
+                  <option value="av1">AV1 (MP4)</option>
+                  <option value="vp9">VP9 (WebM)</option>
+                </optgroup>
+                <optgroup label="NVIDIA GPU encoding">
+                  <option value="h264-nvenc">H.264 / AVC — NVENC (MP4)</option>
+                  <option value="h265-nvenc">H.265 / HEVC — NVENC (MP4)</option>
+                  <option value="av1-nvenc">AV1 — NVENC (MP4)</option>
+                </optgroup>
               </select>
             </div>
           </div>
