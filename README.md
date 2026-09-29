@@ -30,7 +30,7 @@ When channel handling and video re-encoding are both enabled, the application pr
 
 ## Video re-encoding
 
-Video re-encoding is optional and disabled by default. When it is disabled, the original video stream is copied without re-encoding.
+Video re-encoding is optional and disabled by default. When it is disabled, the original video stream is copied without re-encoding. When enabled, the application detects the source video bitrate and uses it as the target for the selected encoder. This keeps the output filesize and perceived quality close to the original while still converting the video codec.
 
 Available CPU encoders:
 
@@ -45,7 +45,7 @@ Available NVIDIA NVENC encoders:
 - **H.265 / HEVC NVENC** — MP4
 - **AV1 NVENC** — MP4
 
-NVENC uses a compatible NVIDIA GPU to accelerate video encoding. H.264 and H.265 support varies by GPU generation, while AV1 NVENC requires newer supported hardware and current NVIDIA drivers. CPU encoders remain available when NVENC is unsupported.
+Re-encoding cannot produce a mathematically identical image at exactly the same filesize. Small differences in quality and size are expected because codecs compress video differently. NVENC uses a compatible NVIDIA GPU to accelerate video encoding. H.264 and H.265 support varies by GPU generation, while AV1 NVENC requires newer supported hardware and current NVIDIA drivers. CPU encoders remain available when NVENC is unsupported.
 
 ## Video editor
 
