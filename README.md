@@ -32,6 +32,8 @@ When channel handling and video re-encoding are both enabled, the application pr
 
 Video re-encoding is optional and disabled by default. When it is disabled, the original video stream is copied without re-encoding. When enabled, the application detects the source video bitrate and uses it as the target for the selected encoder. This keeps the output filesize and perceived quality close to the original while still converting the video codec.
 
+Optional **Compression** is disabled by default. When enabled, its slider reduces the source-matched target bitrate by 5–75%. Higher values create smaller files at the cost of more visible quality loss. Compressed output filenames include the selected reduction, such as `flight_reencoded-h264+compressed-25pct.mp4`.
+
 Available CPU encoders:
 
 - **H.264 / AVC** — MP4
