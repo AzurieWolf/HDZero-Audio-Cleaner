@@ -381,7 +381,7 @@ function outputPathFor(input, outputDirectory, settings) {
   const baseDirectory = outputDirectory || parsed.dir;
   const directory = outputDirectoryFor(baseDirectory, settings.fileOrganization);
   const suffix = outputSuffix(settings);
-  const extension = settings.reencode && normalizedVideoCodec(settings.videoCodec) === 'vp9' ? '.webm'
+  const extension = settings.reencode && normalizedVideoCodec(settings.videoCodec) === 'vp9' ? '.mkv'
     : (settings.reencode ? '.mp4' : parsed.ext);
   let candidate = path.join(directory, `${parsed.name}_${suffix}${extension}`);
   let index = 2;
@@ -427,7 +427,7 @@ function audioCodecFor(filePath) {
 function channelFilter(channel) {
   if (channel === 'right') return ['-af', 'pan=stereo|c0=c1|c1=c1'];
   if (channel === 'left') return ['-af', 'pan=stereo|c0=c0|c1=c0'];
-  return ['-af', 'aformat=channel_layouts=stereo'];
+  return [];
 }
 
 function previewPlaybackFilter(channel) {
@@ -505,15 +505,36 @@ async function processOne(item, settings, index, total) {
       await runProcess(ffmpeg, muxArgs, {
         onStdout: createProgressReader(duration, 75, 95, (progress) => update('processing', progress, `${settings.reencode ? 'Encoding video' : 'Replacing audio track'} · ${progress}%`))
       });
+    } else if (settings.reencode && settings.channel !== 'both') {
+      update('processing', 5, 'Processing selected audio channel · 5%');
+      const audioArgs = withFfmpegProgress([
+        '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
+        '-i', item.path, '-map', '0:a:0', ...channelFilter(settings.channel),
+        '-ar', '48000', '-c:a', 'pcm_s16le', enhanced
+      ]);
+      await runProcess(ffmpeg, audioArgs, {
+        onStdout: createProgressReader(duration, 5, 35, (progress) => update('processing', progress, `Processing selected audio channel · ${progress}%`))
+      });
+
+      update('processing', 35, 'Encoding video with processed audio · 35%');
+      const encodingArgs = withFfmpegProgress([
+        '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
+        '-i', item.path, '-i', enhanced, '-map', '0:v:0', '-map', '1:a:0',
+        ...videoCodecFor(settings), ...audioCodecFor(output), '-shortest', output
+      ]);
+      await runProcess(ffmpeg, encodingArgs, {
+        onStdout: createProgressReader(duration, 35, 95, (progress) => update('processing', progress, `Encoding video with processed audio · ${progress}%`))
+      });
     } else {
-      update('processing', 5, `${settings.reencode ? 'Encoding video' : 'Cleaning audio channel'} · 5%`);
+      const operation = settings.reencode ? 'Encoding video' : (settings.channel === 'both' ? 'Copying original audio' : 'Cleaning audio channel');
+      update('processing', 5, `${operation} · 5%`);
       const cleaningArgs = withFfmpegProgress([
         '-y', '-hide_banner', '-loglevel', 'error', '-ignore_editlist', '1',
         '-i', item.path, '-map', '0:v:0', '-map', '0:a:0', ...videoCodecFor(settings),
-        ...channelFilter(settings.channel), ...audioCodecFor(output), output
+        ...channelFilter(settings.channel), ...(settings.channel === 'both' ? ['-c:a', 'copy'] : audioCodecFor(output)), output
       ]);
       await runProcess(ffmpeg, cleaningArgs, {
-        onStdout: createProgressReader(duration, 5, 95, (progress) => update('processing', progress, `${settings.reencode ? 'Encoding video' : 'Cleaning audio channel'} · ${progress}%`))
+        onStdout: createProgressReader(duration, 5, 95, (progress) => update('processing', progress, `${operation} · ${progress}%`))
       });
     }
     const moveOriginal = movesOriginal(settings.fileOrganization);
