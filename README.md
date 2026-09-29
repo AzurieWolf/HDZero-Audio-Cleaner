@@ -96,6 +96,9 @@ Output filenames describe the operations that were performed:
 - AVI
 - WebM
 - M4V
+- TS
+- MTS
+- M2TS
 
 ## Appearance
 
